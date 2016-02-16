@@ -1,0 +1,684 @@
+---
+title: "ggplot2を拡張する（原題：Extending ggplot2）"
+author: "Hadley Wickham（訳：@yutannihilation）"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Extending ggplot2}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+Note that the original document is provided under the license of GPL-2 and the copyright belongs to Hadley Wickham, the authors of [ggplot2](https://github.com/hadley/ggplot2).
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(ggplot2)
+```
+
+<!-- This vignette documents the official extension mechanism provided in ggplot2 2.0.0. -->
+このvignetteには、ggplot2 2.0.0で公式に提供される拡張メカニズムについて書きます。
+<!-- This vignette is a high-level adjunct to the low-level details found in `?Stat`, `?Geom` and `?theme`. -->
+このvignetteは、`?Stat`や`?Geom`や`?theme`で読むことができる低レベルな詳細をまとめたものです。
+<!-- You'll learn how to extend ggplot2 by creating a new stat, geom, or theme. -->
+新しいstat、geom、themeをつくってggplot2を拡張する方法を身に着けることができるでしょう。
+
+<!-- As you read this document, you'll see many things that will make you scratch your head and wonder why on earth is it designed this way? -->
+これを読み進めるにつれてあなたは、頭を掻きむしり、いったいなぜこんなふうにつくったんだ？と首をかしげるものをたくさん目にするでしょう。
+<!-- Mostly it's historical accident - I wasn't a terribly good R programmer when I started writing ggplot2 and I made a lot of questionable decisions. -->
+それらの多くは、歴史的経緯です。ggplot2の開発を始めたころ私はあまりよいRのプログラマではありませんでした。
+<!-- We cleaned up as many of those issues as possible in the 2.0.0 release, but some fixes simply weren't worth the effort. -->
+私たちは2.0.0のリリースで可能な限り多くの問題を解決しましたが、苦労もむなしくうまく修正できないものもありました。
+
+## ggproto
+
+<!-- All ggplot2 objects are built using the ggproto system of object oriented programming. -->
+すべてのggplot2のオブジェクトは、ggprotoのオブジェクト指向プログラミングシステムを使って作られています。
+
+<!-- This OO system is used only in one place: ggplot2. -->
+このオブジェクト指向システムはたったひとつの場所でしか使われていません。それは、ggplot2です。
+<!-- This is mostly historical accident: ggplot2 started off using [proto]( https://cran.r-project.org/package=proto) 
+because I needed mutable objects. This was well before the creation of (the briefly lived) [mutatr](http://vita.had.co.nz/papers/mutatr.html),
+reference classes and R6: proto was the only game in town. -->
+これはほとんどが歴史的経緯です。ggplot2はmutableなオブジェクトのために[proto]( https://cran.r-project.org/package=proto)を使って始まりました。これは（短命だった）[mutatr](http://vita.had.co.nz/papers/mutatr.html)や参照クラスやR6よりずっと昔の話です。protoだけが唯一の選択肢だったのです。
+
+<!-- But why ggproto? -->
+でもそれでは、なぜggprotoなのでしょう。
+<!-- Well when we turned to add an official extension mechanism to ggplot2, we found a major problem that caused problems when proto objects were extended in a different package (methods were evaluated in ggplot2, not the package where the extension was added). We tried converting to R6, but it was a poor fit for the needs of ggplot2. -->
+ggplot2の公式の拡張メカニズムを追加しようとしたとき、私たちは大きな問題に気付きました。protoオブジェクトが別のパッケージで拡張されていると問題が起こるのです（メソッドはその拡張が追加されたパッケージではなくggplot2パッケージで評価されます）。R6に切り替えようと試みましたが、ggplot2の要求と合致しませんでした。
+<!-- We could've modified proto, but that would've first involved understanding exactly how proto worked, and secondly making sure that the changes didn't affect other users of proto. -->
+protoを改造することもできましたが、そうすると、まずprotoがどのように機能するかを正確に理解することになり、さらにその変更がprotoの他のユーザーに影響を与えないことを確認しなくてはいけなくなります。
+
+<!-- It's strange to say, but this is a case where inventing a new OO system was actually the right answer to the problem! -->
+おかしな話ですが、これは、新しいオブジェクト指向を発明するというのが問題に対する正しい答えだったケースです！
+<!-- Fortunately Winston is now very good at creating OO systems, so it only took him a day to come up with ggproto: it maintains all the features of proto that ggplot2 needs, while allowing cross package inheritance to work. -->
+幸運にもWinstonはオブジェクト指向システムをつくるのにとても長けていて、たった1日でggprotoを思いつきました。ggprotoはggplot2が必要とするprotoの機能をすべて保持し、一方でパッケージ間にまたがる継承もうまく機能させます。
+
+<!-- Here's a quick demo of ggproto in action: -->
+以下はggprotoの簡単な使用例です。
+
+```{r ggproto-intro}
+A <- ggproto("A", NULL,
+  x = 1,
+  inc = function(self) {
+    self$x <- self$x + 1
+  }
+)
+A$x
+A$inc()
+A$x
+A$inc()
+A$inc()
+A$x
+```
+
+<!-- The majority of ggplot2 classes are immutable and static: the methods neither use nor modify state in the class. They're mostly used as a convenient way of bundling related methods together. -->
+ggplot2のクラスの多くはイミュータブルで静的です。つまり、そのメソッドはクラスの中で状態を使うことも変化させることもしません。これらのクラスはほとんどの場合、関連するメソッドをまとめるのに便利な方法として使われています。
+
+<!-- To create a new geom or stat, you will just create a new ggproto that inherits from `Stat`, `Geom` and override the methods described below. -->
+新しいgeomやstatをつくるには、これから説明するように`Stat`や`Geom`を継承して新しいggprotoをつくってそのメソッドをオーバーライドするだけです。
+
+<!-- ## Creating a new stat -->
+## 新しいstatをつくる
+
+<!-- ### The simplest stat -->
+### もっとも単純なstat
+
+<!-- We'll start by creating a very simple stat: one that gives the convex hull (the _c_ hull) of a set of points. First we create a new ggproto object that inherits from `Stat`: -->
+とても単純なstatをつくることから始めます。点の集合の凸包を得るstatです。まず、`Stat`を継承するggprotoオブジェクトをつくります。
+
+```{r chull}
+StatChull <- ggproto("StatChull", Stat,
+  compute_group = function(data, scales) {
+    data[chull(data$x, data$y), , drop = FALSE]
+  },
+  
+  required_aes = c("x", "y")
+)
+```
+
+<!-- The two most important components are the `compute_group()` method (which does the computation), and the `required_aes` field, which lists which aesthetics must be present in order to for the stat to work. -->
+
+もっとも重要な部分は、`compute_group()`メソッド（計算を実行します）と`required_aes`フィールド（このstatが動くのに存在しなければいけないaestheticsをリストアップします）です。
+
+<!-- Next we write a layer function. Unfortunately, due to an early design mistake I called these either `stat_()` or `geom_()`. A better decision would have been to call them `layer_()` functions: that's a more accurate description because every layer involves a stat _and_ a geom. -->
+次に、layer関数を書きます。不幸にも、早期の設計ミスにより私はこれらを`stat_()`や`geom_()`と名付けてしまいました。`layer_()`関数とするべきでした。これはより実体に即した表記です。なぜなら、すべてのレイヤーがstatにもgeomにも関わっているからです。
+
+<!-- All layer functions follow the same form - you specify defaults in the function arguments and then call the `layer()` function, sending `...` into the `params` argument. -->
+すべてのlayer関数は同じ形式に従います。関数の引数にデフォルト引数を設定して、`layer()`を呼び、`...`をその`param`引数に渡します。
+<!-- The arguments in `...` will either be arguments for the geom (if you're making a stat wrapper), arguments for the stat (if you're making a geom wrapper), or aesthetics to be set. `layer()` takes care of teasing the different parameters apart and making sure they're stored in the right place: -->
+`...`に含まれる引数は、geomの引数（statのラッパーの場合）かstatの引数（geomのラッパーの場合）かセットするaestheticsのいずれかです。`layer()`が、異なるパラメータを分離して正しい場所に格納することの面倒を見てくれます。
+
+```{r}
+stat_chull <- function(mapping = NULL, data = NULL, geom = "polygon",
+                       position = "identity", na.rm = FALSE, show.legend = NA, 
+                       inherit.aes = TRUE, ...) {
+  layer(
+    stat = StatChull, data = data, mapping = mapping, geom = geom, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(na.rm = na.rm, ...)
+  )
+}
+```
+
+<!-- (Note that if you're writing this in your own package, you'll either need to call `ggplot2::layer()` explicitly, or import the `layer()` function into your package namespace.) -->
+（注：もし自分のパッケージの中でこれを書くなら、`ggplot2::layer()`と明示的に呼ぶか、`layer()`関数をパッケージの名前空間にインポートするか、いずれかを行う必要があります）
+
+<!-- Once we have a layer function we can try our new stat: -->
+いちどlayer関数ができれば、新しいstatを試してみましょう。
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  stat_chull(fill = NA, colour = "black")
+```
+
+<!-- (We'll see later how to change the defaults of the geom so that you don't need to specify `fill = NA` every time.) -->
+（`fill=NA`と毎回指定しなくてもいいようにgeomのデフォルトを変更する方法は後ほど出てきます）
+
+<!-- Once we've written this basic object, ggplot2 gives a lot for free. For example, ggplot2 automatically preserves aesthetics that are constant within each group: -->
+一度この基本的なオブジェクトを書き上げると、ggplot2が提供するたくさんの機能を自由に使えるようになります。例えば、ggplot2はそれぞれのグループで固定のaestheticsを自動で保存してくれます。
+
+```{r}
+ggplot(mpg, aes(displ, hwy, colour = drv)) + 
+  geom_point() + 
+  stat_chull(fill = NA)
+```
+
+<!-- We can also override the default geom to display the convex hull in a different way: -->
+凸包を別の方法で表示するようにデフォルトのgeomをオーバーライドすることもできます。
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) + 
+  stat_chull(geom = "point", size = 4, colour = "red") +
+  geom_point()
+```
+
+<!-- ### Stat parameters -->
+### Statのパラメータ
+
+<!-- A more complex stat will do some computation. Let's implement a simple version of `geom_smooth()` that adds a line of best fit to a plot. We create a `StatLm` that inherits from `Stat` and a layer function, `stat_lm()`: -->
+さらに複雑なstatはいくつかの計算を行います。プロットにもっともフィットする線を追加する、簡単なバージョンの`geom_smooth()`を実装してみましょう。`Stat`を継承した`StatLm`とlayer関数`stat_lm()`をつくります。
+
+```{r}
+StatLm <- ggproto("StatLm", Stat, 
+  required_aes = c("x", "y"),
+  
+  compute_group = function(data, scales) {
+    rng <- range(data$x, na.rm = TRUE)
+    grid <- data.frame(x = rng)
+    
+    mod <- lm(y ~ x, data = data)
+    grid$y <- predict(mod, newdata = grid)
+    
+    grid
+  }
+)
+
+stat_lm <- function(mapping = NULL, data = NULL, geom = "line",
+                    position = "identity", na.rm = FALSE, show.legend = NA, 
+                    inherit.aes = TRUE, ...) {
+  layer(
+    stat = StatLm, data = data, mapping = mapping, geom = geom, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(na.rm = na.rm, ...)
+  )
+}
+
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  stat_lm()
+```
+
+<!-- `StatLm` is inflexible because it has no parameters. We might want to allow the user to control the model formula and the number of points used to generate the grid. To do so, we add arguments to the `compute_group()` method and our wrapper function: -->
+`StatLm`はパラメータを持たないため柔軟性がありません。モデルの式やグリッドを生成するのに使われる点の数をユーザーが操作できるようにしたい、と思うかもしれません。そうするには、`compute_group()`メソッドと先ほどのラッパー関数に引数を追加します。
+
+```{r}
+StatLm <- ggproto("StatLm", Stat, 
+  required_aes = c("x", "y"),
+  
+  compute_group = function(data, scales, params, n = 100, formula = y ~ x) {
+    rng <- range(data$x, na.rm = TRUE)
+    grid <- data.frame(x = seq(rng[1], rng[2], length = n))
+    
+    mod <- lm(formula, data = data)
+    grid$y <- predict(mod, newdata = grid)
+    
+    grid
+  }
+)
+
+stat_lm <- function(mapping = NULL, data = NULL, geom = "line",
+                    position = "identity", na.rm = FALSE, show.legend = NA, 
+                    inherit.aes = TRUE, n = 50, formula = y ~ x, 
+                    ...) {
+  layer(
+    stat = StatLm, data = data, mapping = mapping, geom = geom, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(n = n, formula = formula, na.rm = na.rm, ...)
+  )
+}
+
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  stat_lm(formula = y ~ poly(x, 10)) + 
+  stat_lm(formula = y ~ poly(x, 10), geom = "point", colour = "red", n = 20)
+```
+
+<!-- Note that we don't _have_ to explicitly include the new parameters in the arguments for the layer, `...` will get passed to the right place anyway. But you'll need to document them somewhere so the user knows about them. -->
+注意すべき点として、新しいパラメータを明示的にlayerの引数に含めることは、必ずやらなくてはいけないわけではありません。いずれにせよ`...`は正しい位置に渡されます。しかし、ユーザーがそれについて知ることができるようにどこかにドキュメントを書く必要はあるでしょう。
+<!-- Here's a brief example. Note `@inheritParams ggplot2::stat_identity`: that will automatically inherit documentation for all the parameters also defined for `stat_identity()`.-->
+ここに短い例があります。`@inheritParams ggplot2::stat_identity`は、`stat_identity()`について定義されたすべてのパラメータについてのドキュメントを自動的に継承してくれます。
+
+```{r}
+#' @inheritParams ggplot2::stat_identity
+#' @param formula The modelling formula passed to \code{lm}. Should only 
+#'   involve \code{y} and \code{x}
+#' @param n Number of points used for interpolation.
+stat_lm <- function(mapping = NULL, data = NULL, geom = "line",
+                    position = "identity", na.rm = FALSE, show.legend = NA, 
+                    inherit.aes = TRUE, n = 50, formula = y ~ x, 
+                    ...) {
+  layer(
+    stat = StatLm, data = data, mapping = mapping, geom = geom, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(n = n, formula = formula, na.rm = na.rm, ...)
+  )
+}
+
+```
+
+<!-- ### Picking defaults -->
+### デフォルト値を使う
+
+<!-- Sometimes you have calculations that should be performed once for the complete dataset, not once for each group. -->
+場合によっては、それぞれのデータに対して一度づつではなく、データセット全体に行うべき計算があります。
+<!-- This is useful for picking sensible default values. For example, if we want to do a density estimate, it's reasonable to pick one bandwidth for the whole plot. -->
+これは、理にかなったデフォルト値を選ぶのに役立ちます。例えば、密度推定を行いたいとき、プロット全体に対してひとつのバンド幅を選ぶのは妥当なことでしょう。
+<!-- The following Stat creates a variation of the `stat_density()` that picks one bandwidth for all groups by choosing the mean of the "best" bandwidth for each group (I have no theoretical justification for this, but it doesn't seem unreasonable). -->
+以下のStatは、それぞれのグループに最適なバンド幅の平均を全グループのバンド幅として使う（この方法に論理的な根拠はありませんが、非合理的ではなさそうに見えます）、`stat_density()`の一種をつくります。
+
+<!-- To do this we override the `setup_params()` method. It's passed the data and a list of params, and returns an updated list. -->
+そうするためには、`setup_param()`メソッドをオーバーライドします。これは、データとパラメータのリストを渡すと更新されたリストを返します。
+
+```{r}
+StatDensityCommon <- ggproto("StatDensityCommon", Stat, 
+  required_aes = "x",
+  
+  setup_params = function(data, params) {
+    if (!is.null(params$bandwidth))
+      return(params)
+    
+    xs <- split(data$x, data$group)
+    bws <- vapply(xs, bw.nrd0, numeric(1))
+    bw <- mean(bws)
+    message("Picking bandwidth of ", signif(bw, 3))
+    
+    params$bandwidth <- bw
+    params
+  },
+  
+  compute_group = function(data, scales, bandwidth = 1) {
+    d <- density(data$x, bw = bandwidth)
+    data.frame(x = d$x, y = d$y)
+  }  
+)
+
+stat_density_common <- function(mapping = NULL, data = NULL, geom = "line",
+                                position = "identity", na.rm = FALSE, show.legend = NA, 
+                                inherit.aes = TRUE, bandwidth = NULL,
+                                ...) {
+  layer(
+    stat = StatDensityCommon, data = data, mapping = mapping, geom = geom, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(bandwidth = bandwidth, na.rm = na.rm, ...)
+  )
+}
+
+ggplot(mpg, aes(displ, colour = drv)) + 
+  stat_density_common()
+
+ggplot(mpg, aes(displ, colour = drv)) + 
+  stat_density_common(bandwidth = 0.5)
+```
+
+<!-- I recommend using `NULL` as a default value. If you pick important parameters automatically, it's a good idea to `message()` to the user (and when printing a floating point parameter, using `signif()` to show only a few significant digits). -->
+私は`NULL`をデフォルト値にすることをお薦めします。もしも重要なパラメータを自動で選ぶのであれば、`message()`でユーザーに伝えるのがいいでしょう。(あと、浮動小数点のパラメータを表示するときは`signif()`を使って数桁だけを見せるのがいいでしょう)
+
+<!-- ### Variable names and default aesthetics -->
+### 変数名とデフォルトのaesthetics
+
+<!-- This stat illustrates another important point. If we want to make this stat usable with other geoms, we should return a variable called `density` instead of `y`. -->
+以下のstatは別の重要な点を示しています。もしも他のgeomといっしょにこのstatを使いたい場合は、`y`ではなく`density`という名前の変数を返すべきです。
+<!-- Then we can set up the `default_aes` to automatically map `density` to `y`, which allows the user to override it to use with different geoms: -->
+そうすることで、`density`を`y`に自動的にマップするように`default_aes`を設定することができます。ユーザーはこのaestheticsをオーバーライドして別のgeomで使うことができます。
+
+```{r}
+StatDensityCommon <- ggproto("StatDensity2", Stat, 
+  required_aes = "x",
+  default_aes = aes(y = ..density..),
+
+  compute_group = function(data, scales, bandwidth = 1) {
+    d <- density(data$x, bw = bandwidth)
+    data.frame(x = d$x, density = d$y)
+  }  
+)
+
+ggplot(mpg, aes(displ, drv, colour = ..density..)) + 
+  stat_density_common(bandwidth = 1, geom = "point")
+```
+
+<!-- However, using this stat with the area geom doesn't work quite right. The areas don't stack on top of each other: -->
+しかし、このstatをareaのgeomと組み合わせると正しく動作しません。面が積み重なっていません。
+
+```{r}
+ggplot(mpg, aes(displ, fill = drv)) + 
+  stat_density_common(bandwidth = 1, geom = "area", position = "stack")
+```
+
+<!-- This is because each density is computed independently, and the estimated `x`s don't line up. We can resolve that issue by computing the range of the data once in `setup_params()`. -->
+これはなぜかというと、各グループの密度が別々に計算されていて`x`の推定値が含まれていないからです。この問題は、`setup_param()`で一度だけデータの範囲を計算するようにすることで解決できます。
+
+```{r}
+StatDensityCommon <- ggproto("StatDensityCommon", Stat, 
+  required_aes = "x",
+  default_aes = aes(y = ..density..),
+
+  setup_params = function(data, params) {
+    min <- min(data$x) - 3 * params$bandwidth
+    max <- max(data$x) + 3 * params$bandwidth
+    
+    list(
+      bandwidth = params$bandwidth,
+      min = min,
+      max = max,
+      na.rm = params$na.rm
+    )
+  },
+  
+  compute_group = function(data, scales, min, max, bandwidth = 1) {
+    d <- density(data$x, bw = bandwidth, from = min, to = max)
+    data.frame(x = d$x, density = d$y)
+  }  
+)
+
+ggplot(mpg, aes(displ, fill = drv)) + 
+  stat_density_common(bandwidth = 1, geom = "area", position = "stack")
+ggplot(mpg, aes(displ, drv, fill = ..density..)) + 
+  stat_density_common(bandwidth = 1, geom = "raster")
+```
+
+### Exercises
+
+<!--
+1.  Extend `stat_chull` to compute the alpha hull, as from the
+    [alphahull](https://cran.r-project.org/package=alphahull) package. Your
+    new stat should take an `alpha` argument.
+1.  Modify the final version of `StatDensityCommon` to allow the user to 
+    specify the `min` and `max` parameters. You'll need to modify both the
+    layer function and the `compute_group()` method.
+1.  Compare and contrast `StatLm` to `ggplot2::StatSmooth`. What key
+    differences make `StatSmooth` more complex than `StatLm`?    
+    -->
+1. `stat_chull`を拡張して、[alphahull](https://cran.r-project.org/package=alphahull)がやっているようにアルファシェイプを計算するようにしなさい。
+   新しいstatは`alpha`を引数に取ること。
+1. `StatDensityCommon`の最終バージョンに変更を加え、ユーザーが`min`と`max`パラメーターを指定できるようにしなさい。layer関数と
+   `compute_group()`メソッドの両方を変更する必要がある。
+1. `StatLm`と`ggplot2::StatSmooth`を比較しなさい。`StatSmooth`を`StatLm`より複雑にしている重要な違いは何？
+
+
+<!-- ## Creating a new geom -->
+## 新しいgeomをつくる
+
+<!-- It's harder to create a new geom than a new stat because you also need to know some grid. -->
+新しいgeomをつくるのは、gridについて知る必要があるため、新しいstatをつくるより難しいです。
+<!-- ggplot2 is built on top of grid, so you'll need to know the basics of drawing with grid. -->
+ggplot2はgridの上に成り立っているので、gridでプロットを描く基本について知る必要があります。
+<!-- If you're serious about adding a new geom, I'd recommend buying [R graphics](http://amzn.com/B00I60M26G) by Paul Murrell. It tells you everything you need to know about drawing with grid. -->
+もしも新しいgeomをつくることを真剣に検討しているのであればPaul Murrellの[R graphics](http://amzn.com/B00I60M26G)（邦訳：[Rグラフィックス](http://www.kyoritsu-pub.co.jp/bookdetail/9784320019058)）を購入することをお薦めします。この本はgridでプロットを描くために知る必要があることをすべて教えてくれます。
+
+<!-- ### A simple geom -->
+### 簡単なgeom
+
+<!-- It's easiest to start with a simple example. The code below is a simplified version of `geom_point()`: -->
+簡単な例から始めるのが簡単でしょう。以下のコードは`geom_point()`の簡単なバージョンです：
+
+```{r GeomSimplePoint}
+GeomSimplePoint <- ggproto("GeomSimplePoint", Geom,
+  required_aes = c("x", "y"),
+  default_aes = aes(shape = 19, colour = "black"),
+  draw_key = draw_key_point,
+
+  draw_panel = function(data, panel_scales, coord) {
+    coords <- coord$transform(data, panel_scales)
+    grid::pointsGrob(
+      coords$x, coords$y,
+      pch = coords$shape,
+      gp = grid::gpar(col = coords$colour)
+    )
+  }
+)
+
+geom_simple_point <- function(mapping = NULL, data = NULL, stat = "identity",
+                              position = "identity", na.rm = FALSE, show.legend = NA, 
+                              inherit.aes = TRUE, ...) {
+  layer(
+    geom = GeomSimplePoint, mapping = mapping,  data = data, stat = stat, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(na.rm = na.rm, ...)
+  )
+}
+
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_simple_point()
+```
+
+<!-- This is very similar to defining a new stat. You always need to provide fields/methods for the four pieces shown above: -->
+これはあたらしいstatを定義する時ととてもよく似ています。上に示した4つに対してフィールドまたはメソッドを指定する必要があります。
+
+<!-- * `required_aes` is a character vector which lists all the aesthetics that
+  the user must provide. -->
+* `required_aes`はユーザが指定しなければならないすべてのaestheticsを並べたcharacterのベクトルです。
+<!--  * `default_aes` lists the aesthetics that have default values. -->
+* `default_aes`は、デフォルト値を持つaestheticsのリストです。
+
+<!-- * `draw_key` provides the function used to draw the key in the legend. 
+  You can see a list of all the build in key functions in `?draw_key` -->
+* `draw_key`は凡例のキーを描画するのに使われる関数を提供します。`?draw_key`を見れば組み込みのkey関数のリストを見ることができます。
+  
+<!-- * `draw_group()` is where the magic happens. This function takes three
+  arguments and returns a grid grob. It is called once for each panel.
+  It's the most complicated part and is described in more detail below. -->
+* `draw_group()`は魔法が起こる場所です。この関数は3つの引数を取って、1つのgrid grobを返します。これはそれぞれのパネルに対して1回づつ呼ばれます。
+  これは以下により詳しく説明しますが、もっとも複雑な部分です。
+  
+<!-- `draw_group()` has three arguments: -->
+`draw_group()`は3つの引数を持っています：
+
+<!-- * `data`: a data frame with one column for each aesthetic. -->
+* `data`: それぞれのaestheticsに対してひとつのカラムを持つデータフレーム
+
+<!-- * `panel_scales`: a list containing information about the x and y scales
+  for the current panel. -->
+* `panel_scales`: 現在のパネルのxとyのスケールに関する情報を含んだリスト
+
+<!-- * `coord`: an object describing the coordinate system. -->
+* `coord`: 座標系について記述しているオブジェクト
+
+<!-- Generally you won't use `panel_scales` and `coord` directly, but you will always use them to transform the data: `coords <- coord$transform(data, panel_scales)`. -->
+一般的に、`panel_scales`と`coord`が直接使われることはないでしょう。しかし、データを変形させるために常にこれらを使うことになります：`coords <- coord$transform(data, panel_scales)`
+<!-- This creates a data frame where position variables are scaled to the range 0--1. You then take this data and call a grid grob function. (Transforming for non-Cartesian coordinate systems is quite complex - you're best of transforming your data to the form accepted by an existing ggplot2 geom and passing it.) -->
+これは、position変数が0～1の範囲にスケールされたデータフレームを作成します。それから、このデータが返ってきて、grid grob関数が呼び出されます。（非直行座標系での変形はとても複雑です。既存のggplot2のgeomが受け付ける形にデータを変形して、そのgeomに渡すのがいいでしょう）
+
+<!-- ### Collective geoms -->
+### 集合的なgeom
+
+<!-- Overriding `draw_panel()` is most appropriate if there is one graphic element per row. In other cases, you want graphic element per group. For example, take polygons: each row gives one vertex of a polygon. In this case, you should instead override `draw_group()`: -->
+`draw_panel()`をオーバーライドするのは、1つの行で1つの要素だけが描画されるなら、もっとも適切なやり方です。他の場合だと、グループごとに要素を描きたくなります。たとえば、多角形を例にとると、各行は多角形の1つの頂点を与えます。この場合には、`draw_group()`をオーバーライドするべきです。
+
+<!-- The following code makes a simplified version of `GeomPolygon`: -->
+以下は`GeomPolygon`の簡単なバージョンです。
+
+```{r}
+GeomSimplePolygon <- ggproto("GeomPolygon", Geom,
+  required_aes = c("x", "y"),
+  
+  default_aes = aes(
+    colour = NA, fill = "grey20", size = 0.5,
+    linetype = 1, alpha = 1
+  ),
+
+  draw_key = draw_key_polygon,
+
+  draw_group = function(data, panel_scales, coord) {
+    n <- nrow(data)
+    if (n <= 2) return(grid::nullGrob())
+
+    coords <- coord$transform(data, panel_scales)
+    # A polygon can only have a single colour, fill, etc, so take from first row
+    first_row <- coords[1, , drop = FALSE]
+
+    grid::polygonGrob(
+      coords$x, coords$y, 
+      default.units = "native",
+      gp = grid::gpar(
+        col = first_row$colour,
+        fill = scales::alpha(first_row$fill, first_row$alpha),
+        lwd = first_row$size * .pt,
+        lty = first_row$linetype
+      )
+    )
+  }
+)
+geom_simple_polygon <- function(mapping = NULL, data = NULL, stat = "chull",
+                                position = "identity", na.rm = FALSE, show.legend = NA, 
+                                inherit.aes = TRUE, ...) {
+  layer(
+    geom = GeomSimplePolygon, mapping = mapping, data = data, stat = stat, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(na.rm = na.rm, ...)
+  )
+}
+
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  geom_simple_polygon(aes(colour = class), fill = NA)
+```
+
+<!-- There are a few things to note here: -->
+いくつか特筆すべき点があります：
+
+<!-- * We override `draw_group()` instead of `draw_layer()` because we want
+  one polygon per group, not one polygon per row. If you look at the source
+  code for the original `GeomPolygon` you'll see it actually overrides
+  `geom_layer()` because it uses some tricks to make `polygonGrob()` produce
+  multiple polygons in one call. This is considerably more complicated, but 
+  gives better performance. -->
+
+* 1つの行につき1つの多角形を描くのではなく1つのグループにつき1つの多角形を描きたいので、`draw_layer()`の代わりに`draw_group()`をオーバーライドしています。
+  オリジナルの`GeomPolygon`のソースコードを見たなら、実際には`geom_layer()`をオーバーライドしていることに気づくでしょう。これは`polygonGrob`をつくるためのいくつかの
+  トリックが1回の呼び出しで複数の多角形を生成するからです。これはかなり複雑ですが、パフォーマンスに優れています。
+ 
+<!-- * If the data contains two or fewer points, there's no point trying to draw
+  a polygon, so we return a `nullGrob()`. This is the graphical equivalent
+  of `NULL`: it's a grob that doesn't draw anything and doesn't take up
+  any space. -->
+
+* もしデータが2つ以下の点しか含まない場合、多角形を描こうとする意味はないので、`nullGrob()`を返します。
+  これは`NULL`に相当するものです：これは何も描画せず場所も取らないgrobです。
+  
+<!-- * Note the units: `x` and `y` should always be drawn in "native" units. 
+  (The default units for `pointGrob()` is a native, so we didn't need to 
+  change it there). `lwd` is measured in points, but ggplot2 uses mm, 
+  so we need to multiply it by the adjustment factor `.pt`. -->
+* 単位について注意すべきは、`x`と`y`が「ネイティブな」単位で描かれるという点です（`pointGrob`のデフォルトの
+  単位はネイティブなので、何も変更する必要はありません）。`lwd`はポイント単位ですが、ggplot2はmm単位を使うので、
+  修正するための要素`.pt`を掛ける必要があります。
+
+<!-- ### Inheriting from an existing Geom -->
+### 既存のgeomからの継承
+
+<!-- Sometimes you just want to make a small modification to an existing geom. In this case, rather than inheriting from `Geom` you can inherit from an existing subclass. For example, we might want to change the defaults for `GeomPolygon` to work better with `StatChull`: -->
+ときどき、既存のgeomに小さな変更を加えたくなります。この場合、`Geom`を継承するよりも、既に存在するサブクラスを継承することができます。たとえば、`StatChull`と組み合わせてうまく動くように`GeomPolygon`のデフォルトを変更したくなります：
+
+```{r}
+GeomPolygonHollow <- ggproto("GeomPolygonHollow", GeomPolygon,
+  default_aes = aes(colour = "black", fill = NA, size = 0.5, linetype = 1,
+    alpha = NA)
+  )
+geom_chull <- function(mapping = NULL, data = NULL, 
+                       position = "identity", na.rm = FALSE, show.legend = NA, 
+                       inherit.aes = TRUE, ...) {
+  layer(
+    stat = StatChull, geom = GeomPolygonHollow, data = data, mapping = mapping,
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(na.rm = na.rm, ...)
+  )
+}
+
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  geom_chull()
+```
+
+<!-- This doesn't allow you to use different geoms with the stat, but that seems appropriate here since the convex hull is primarily a polygonal feature. -->
+このやり方では別のgeomをこのstatと組み合わせることはできませんが、凸包がおおむね多角形の機能となったので、ここでは適切だと思われます。
+
+### Exercises
+
+<!--
+1. Compare and contrast `GeomPoint` with `GeomSimplePoint`. 
+
+1. Compare and contract `GeomPolygon` with `GeomSimplePolygon`.
+-->
+1. `GeomPoint`と`GeomSimplePoint`を比較しなさい。
+1. `GeomPolygon`と`GeomSimplePolygon`を比較しなさい。
+
+
+<!-- ## Creating your own theme -->
+## 自分のthemeをつくる
+
+<!-- If you're going to create your own complete theme, there are a few things you need to know: -->
+もし自分の完全なthemeをつくろうとするなら、いくつか知る必要があることがあります：
+
+<!-- * Overriding existing elements, rather than modifying them -->
+* 既存のelementに変更を加えるのではなく、オーバーライドする
+<!-- * The four global elements that affect (almost) every other theme element -->
+* themeの（ほぼ）すべてのelementに影響を与える4つのグローバルなelement
+<!-- * Complete vs. incomplete elements -->
+* 完全なelement vs 不完全なelement
+
+<!-- ### Overriding elements -->
+### elementのオーバーライド
+
+<!-- By default, when you add a new theme element, it inherits values from the existing theme. For example, the following code sets the key colour to red, but it inherits the existing fill colour: -->
+デフォルトでは、新しいtheme elementを追加すると、既存のテーマから値を継承します。例えば、以下のコードはkeyのcolourを赤に設定していますが、既存のfillを継承しています。
+
+```{r}
+theme_grey()$legend.key
+
+new_theme <- theme_grey() + theme(legend.key = element_rect(colour = "red"))
+new_theme$legend.key
+```
+
+<!-- To override it completely, use `%+replace%` instead of `+`: -->
+完全にオーバーライドするには`+`ではなく`%+replace%`を使います。
+
+```{r}
+new_theme <- theme_grey() %+replace% theme(legend.key = element_rect(colour = "red"))
+new_theme$legend.key
+```
+
+<!-- ### Global elements -->
+### グローバルなelement
+
+<!-- There are four elements that affect the global appearance of the plot: -->
+プロット全体の見え方に影響するelementが4つあります：
+
+Element      | Theme function    | 概要
+-------------|-------------------|------------------------
+line         | `element_line()`  | すべての線
+rect         | `element_rect()`  | すべての長方形
+text         | `element_text()`  | すべてのテキスト
+title        | `element_text()`  | タイトル要素（プロット、軸、凡例）のすべてのテキスト
+
+<!-- These set default properties that are inherited by more specific settings. These are most useful for setting an overall "background" colour and overall font settings (e.g. family and size). -->
+これらは、より詳細な設定から継承されるデフォルトの属性をセットします。全体のbackgroundの色や全体のフォント設定（familyやsize）を設定するのに便利です。
+
+```{r axis-line-ex}
+df <- data.frame(x = 1:3, y = 1:3)
+base <- ggplot(df, aes(x, y)) + 
+  geom_point() + 
+  theme_minimal()
+
+base
+base + theme(text = element_text(colour = "red"))
+```
+
+<!-- You should generally start creating a theme by modifying these values. -->
+一般的には、これらの値を変更するところからthemeづくりを始めるべきでしょう。
+
+<!-- ### Complete vs incomplete -->
+### 完全なelement vs 不完全なelement
+
+<!-- It is useful to understand the difference between complete and incomplete theme objects. A *complete* theme object is one produced by calling a theme function with the attribute `complete = TRUE`. -->
+完全なthemeオブジェクトと不完全なthemeオブジェクトの違いについて理解するのは有用です。完全なthemeオブジェクトは、`complete = TRUE`を付けてtheme関数を呼び出すことで生成されます。
+
+<!-- Theme functions `theme_grey()` and `theme_bw()` are examples of complete theme functions. -->
+`theme_grey()`と`theme_bw()`は完全なtheme関数の例です。
+<!-- Calls to `theme()` produce *incomplete* theme objects, since they represent (local) modifications to a theme object rather than returning a complete theme object per se. -->
+`theme()`は不完全なthemeオブジェクトを生成します。なぜなら、それらは、themeオブジェクトの部分的な変更を表すのであって、完全なthemeオブジェクトそれ自体を返すものではないからです。
+<!-- When adding an incomplete theme to a complete one, the result is a complete theme. -->
+不完全なthemeと完全なthemeを足し合わせると、完全なthemeｖができます。
+
+<!-- Complete and incomplete themes behave somewhat differently when added to a ggplot object: -->
+完全なthemeと不完全なthemeはggplotオブジェクトに足しあわされた時はやや異なる挙動をします。
+
+<!-- * Adding an incomplete theme augments the current theme object, replacing only 
+  those properties of elements defined in the call to `theme()`. -->
+* 不完全なthemeを足し合わせると、今のthemeオブジェクトを拡張し、`theme()`の呼び出しに定義されたelementの属性のみを置き換えます。
+  
+<!-- * Adding a complete theme wipes away the existing theme and applies the new theme. -->
+* 完全なthemeを足し合わせると、既存のthemeを取り除き、新しいthemeを適用します。
