@@ -10,7 +10,7 @@ vignette: >
 ---
 
 
-Note that the original document is provided under the license of GPL-2 and the copyright belongs to Hadley Wickham, the authors of [ggplot2](https://github.com/hadley/ggplot2).
+Note that the original document is provided under the license of GPL-2 and the copyright belongs to Hadley Wickham, one of the authors of [ggplot2](https://github.com/hadley/ggplot2).
 ---
 
 ```{r, include = FALSE}
