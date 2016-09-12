@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="Hadley Wickham（訳：@yutannihilation）" />
+
+<meta name="date" content="2016-02-16" />
+
+<title>ggplot2を拡張する（原題：Extending ggplot2）</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+
+
+<link href="data:text/css;charset=utf-8,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23header%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0A%7D%0Apre%20%7B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%20code%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" rel="stylesheet" type="text/css" />
+
+</head>
+
+<body>
+
+
+
+<div id="header">
+<h1 class="title">ggplot2を拡張する（原題：Extending ggplot2）</h1>
+<h4 class="author"><em>Hadley Wickham（訳：<span class="citation">@yutannihilation</span>）</em></h4>
+<h4 class="date"><em>2016-02-16</em></h4>
+</div>
+
+
+<div id="note-that-the-original-document-is-provided-under-the-license-of-gpl-2-and-the-copyright-belongs-to-hadley-wickham-one-of-the-authors-of-ggplot2." class="section level2">
+<h2>Note that the original document is provided under the license of GPL-2 and the copyright belongs to Hadley Wickham, one of the authors of <a href="https://github.com/hadley/ggplot2">ggplot2</a>.</h2>
+<!-- This vignette documents the official extension mechanism provided in ggplot2 2.0.0. -->
+<p>このvignetteには、ggplot2 2.0.0で公式に提供される拡張メカニズムについて書きます。 <!-- This vignette is a high-level adjunct to the low-level details found in `?Stat`, `?Geom` and `?theme`. --> このvignetteは、<code>?Stat</code>や<code>?Geom</code>や<code>?theme</code>で読むことができる低レベルな詳細をまとめたものです。 <!-- You'll learn how to extend ggplot2 by creating a new stat, geom, or theme. --> 新しいstat、geom、themeをつくってggplot2を拡張する方法を身に着けることができるでしょう。</p>
+<!-- As you read this document, you'll see many things that will make you scratch your head and wonder why on earth is it designed this way? -->
+<p>これを読み進めるにつれてあなたは、頭を掻きむしり、いったいなぜこんなふうにつくったんだ？と首をかしげるものをたくさん目にするでしょう。 <!-- Mostly it's historical accident - I wasn't a terribly good R programmer when I started writing ggplot2 and I made a lot of questionable decisions. --> それらの多くは、歴史的経緯です。ggplot2の開発を始めたころ私はあまりよいRのプログラマではありませんでした。 <!-- We cleaned up as many of those issues as possible in the 2.0.0 release, but some fixes simply weren't worth the effort. --> 私たちは2.0.0のリリースで可能な限り多くの問題を解決しましたが、苦労もむなしくうまく修正できないものもありました。</p>
+</div>
+<div id="ggproto" class="section level2">
+<h2>ggproto</h2>
+<!-- All ggplot2 objects are built using the ggproto system of object oriented programming. -->
+<p>すべてのggplot2のオブジェクトは、ggprotoのオブジェクト指向プログラミングシステムを使って作られています。</p>
+<!-- This OO system is used only in one place: ggplot2. -->
+<p>このオブジェクト指向システムはたったひとつの場所でしか使われていません。それは、ggplot2です。 <!-- This is mostly historical accident: ggplot2 started off using [proto]( https://cran.r-project.org/package=proto) 
+because I needed mutable objects. This was well before the creation of (the briefly lived) [mutatr](http://vita.had.co.nz/papers/mutatr.html),
+reference classes and R6: proto was the only game in town. --> これはほとんどが歴史的経緯です。ggplot2はmutableなオブジェクトのために<a href="https://cran.r-project.org/package=proto">proto</a>を使って始まりました。これは（短命だった）<a href="http://vita.had.co.nz/papers/mutatr.html">mutatr</a>や参照クラスやR6よりずっと昔の話です。protoだけが唯一の選択肢だったのです。</p>
+<!-- But why ggproto? -->
+<p>でもそれでは、なぜggprotoなのでしょう。 <!-- Well when we turned to add an official extension mechanism to ggplot2, we found a major problem that caused problems when proto objects were extended in a different package (methods were evaluated in ggplot2, not the package where the extension was added). We tried converting to R6, but it was a poor fit for the needs of ggplot2. --> ggplot2の公式の拡張メカニズムを追加しようとしたとき、私たちは大きな問題に気付きました。protoオブジェクトが別のパッケージで拡張されていると問題が起こるのです（メソッドはその拡張が追加されたパッケージではなくggplot2パッケージで評価されます）。R6に切り替えようと試みましたが、ggplot2の要求と合致しませんでした。 <!-- We could've modified proto, but that would've first involved understanding exactly how proto worked, and secondly making sure that the changes didn't affect other users of proto. --> protoを改造することもできましたが、そうすると、まずprotoがどのように機能するかを正確に理解することになり、さらにその変更がprotoの他のユーザーに影響を与えないことを確認しなくてはいけなくなります。</p>
+<!-- It's strange to say, but this is a case where inventing a new OO system was actually the right answer to the problem! -->
+<p>おかしな話ですが、これは、新しいオブジェクト指向を発明するというのが問題に対する正しい答えだったケースです！ <!-- Fortunately Winston is now very good at creating OO systems, so it only took him a day to come up with ggproto: it maintains all the features of proto that ggplot2 needs, while allowing cross package inheritance to work. --> 幸運にもWinstonはオブジェクト指向システムをつくるのにとても長けていて、たった1日でggprotoを思いつきました。ggprotoはggplot2が必要とするprotoの機能をすべて保持し、一方でパッケージ間にまたがる継承もうまく機能させます。</p>
+<!-- Here's a quick demo of ggproto in action: -->
+<p>以下はggprotoの簡単な使用例です。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">A &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;A&quot;</span>, <span class="ot">NULL</span>,
+  <span class="dt">x =</span> <span class="dv">1</span>,
+  <span class="dt">inc =</span> function(self) {
+    self$x &lt;-<span class="st"> </span>self$x +<span class="st"> </span><span class="dv">1</span>
+  }
+)
+A$x
+<span class="co">#&gt; [1] 1</span>
+A$<span class="kw">inc</span>()
+A$x
+<span class="co">#&gt; [1] 2</span>
+A$<span class="kw">inc</span>()
+A$<span class="kw">inc</span>()
+A$x
+<span class="co">#&gt; [1] 4</span></code></pre></div>
+<!-- The majority of ggplot2 classes are immutable and static: the methods neither use nor modify state in the class. They're mostly used as a convenient way of bundling related methods together. -->
+<p>ggplot2のクラスの多くはイミュータブルで静的です。つまり、そのメソッドはクラスの中で状態を使うことも変化させることもしません。これらのクラスはほとんどの場合、関連するメソッドをまとめるのに便利な方法として使われています。</p>
+<!-- To create a new geom or stat, you will just create a new ggproto that inherits from `Stat`, `Geom` and override the methods described below. -->
+<p>新しいgeomやstatをつくるには、これから説明するように<code>Stat</code>や<code>Geom</code>を継承して新しいggprotoをつくってそのメソッドをオーバーライドするだけです。</p>
+<!-- ## Creating a new stat -->
+</div>
+<div id="stat" class="section level2">
+<h2>新しいstatをつくる</h2>
+<!-- ### The simplest stat -->
+<div id="stat" class="section level3">
+<h3>もっとも単純なstat</h3>
+<!-- We'll start by creating a very simple stat: one that gives the convex hull (the _c_ hull) of a set of points. First we create a new ggproto object that inherits from `Stat`: -->
+<p>とても単純なstatをつくることから始めます。点の集合の凸包を得るstatです。まず、<code>Stat</code>を継承するggprotoオブジェクトをつくります。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">StatChull &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;StatChull&quot;</span>, Stat,
+  <span class="dt">compute_group =</span> function(data, scales) {
+    data[<span class="kw">chull</span>(data$x, data$y), , drop =<span class="st"> </span><span class="ot">FALSE</span>]
+  },
+  
+  <span class="dt">required_aes =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)
+)</code></pre></div>
+<!-- The two most important components are the `compute_group()` method (which does the computation), and the `required_aes` field, which lists which aesthetics must be present in order to for the stat to work. -->
+<p>もっとも重要な部分は、<code>compute_group()</code>メソッド（計算を実行します）と<code>required_aes</code>フィールド（このstatが動くのに存在しなければいけないaestheticsをリストアップします）です。</p>
+<!-- Next we write a layer function. Unfortunately, due to an early design mistake I called these either `stat_()` or `geom_()`. A better decision would have been to call them `layer_()` functions: that's a more accurate description because every layer involves a stat _and_ a geom. -->
+<p>次に、layer関数を書きます。不幸にも、早期の設計ミスにより私はこれらを<code>stat_()</code>や<code>geom_()</code>と名付けてしまいました。<code>layer_()</code>関数とするべきでした。これはより実体に即した表記です。なぜなら、すべてのレイヤーがstatにもgeomにも関わっているからです。</p>
+<!-- All layer functions follow the same form - you specify defaults in the function arguments and then call the `layer()` function, sending `...` into the `params` argument. -->
+<p>すべてのlayer関数は同じ形式に従います。関数の引数にデフォルト引数を設定して、<code>layer()</code>を呼び、<code>...</code>をその<code>param</code>引数に渡します。 <!-- The arguments in `...` will either be arguments for the geom (if you're making a stat wrapper), arguments for the stat (if you're making a geom wrapper), or aesthetics to be set. `layer()` takes care of teasing the different parameters apart and making sure they're stored in the right place: --> <code>...</code>に含まれる引数は、geomの引数（statのラッパーの場合）かstatの引数（geomのラッパーの場合）かセットするaestheticsのいずれかです。<code>layer()</code>が、異なるパラメータを分離して正しい場所に格納することの面倒を見てくれます。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">stat_chull &lt;-<span class="st"> </span>function(<span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">geom =</span> <span class="st">&quot;polygon&quot;</span>,
+                       <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>, <span class="dt">show.legend =</span> <span class="ot">NA</span>, 
+                       <span class="dt">inherit.aes =</span> <span class="ot">TRUE</span>, ...) {
+  <span class="kw">layer</span>(
+    <span class="dt">stat =</span> StatChull, <span class="dt">data =</span> data, <span class="dt">mapping =</span> mapping, <span class="dt">geom =</span> geom, 
+    <span class="dt">position =</span> position, <span class="dt">show.legend =</span> show.legend, <span class="dt">inherit.aes =</span> inherit.aes,
+    <span class="dt">params =</span> <span class="kw">list</span>(<span class="dt">na.rm =</span> na.rm, ...)
+  )
+}</code></pre></div>
+<!-- (Note that if you're writing this in your own package, you'll either need to call `ggplot2::layer()` explicitly, or import the `layer()` function into your package namespace.) -->
+<p>（注：もし自分のパッケージの中でこれを書くなら、<code>ggplot2::layer()</code>と明示的に呼ぶか、<code>layer()</code>関数をパッケージの名前空間にインポートするか、いずれかを行う必要があります）</p>
+<!-- Once we have a layer function we can try our new stat: -->
+<p>いちどlayer関数ができれば、新しいstatを試してみましょう。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, hwy)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_point</span>() +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_chull</span>(<span class="dt">fill =</span> <span class="ot">NA</span>, <span class="dt">colour =</span> <span class="st">&quot;black&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- (We'll see later how to change the defaults of the geom so that you don't need to specify `fill = NA` every time.) -->
+<p>（<code>fill=NA</code>と毎回指定しなくてもいいようにgeomのデフォルトを変更する方法は後ほど出てきます）</p>
+<!-- Once we've written this basic object, ggplot2 gives a lot for free. For example, ggplot2 automatically preserves aesthetics that are constant within each group: -->
+<p>一度この基本的なオブジェクトを書き上げると、ggplot2が提供するたくさんの機能を自由に使えるようになります。例えば、ggplot2はそれぞれのグループで固定のaestheticsを自動で保存してくれます。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, hwy, <span class="dt">colour =</span> drv)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_point</span>() +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_chull</span>(<span class="dt">fill =</span> <span class="ot">NA</span>)</code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAAA0lBMVEUAAAAAADoAAGYAOpAAZrYAujgzMzM6AAA6ADo6AGY6OgA6OmY6OpA6kNtNTU1NTW5NTY5NbqtNjshhnP9mAABmADpmOgBmtv9uTU1uTW5uTY5ubo5ubqtuq+SOTU2OTW6OTY6Obk2ObquOyP+QOgCQOjqQkDqQkGaQtpCQ29uQ2/+rbk2rbm6rbo6rjk2r5OSr5P+2ZgC2///Ijk3I///bkDrb/9vb///kq27k///r6+vy8vL4dm3/tmb/yI7/25D/5Kv//7b//8j//9v//+T///8cJMk1AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAPAUlEQVR4nO2dC3/bthHAlcSYm3VR29Frsrbp1tlbtiRb8/LiYnDkF7//VxoBAuCBPLwoUuLj7lfbgkBKwL93h8MBRDYlSVA2x27A1IUARYQARYQARYQARYQARSQbEJdS/zaSXOp5W36JABEgArRYQGsT0iACRIAI0JwBMcYIUAAQk0KACBABGgsQ+aAYIM44aVAEkPyPAPkASTglQ9pIgAhQOiDHyAgQAggSIkAYIECIABGgPoAaQgQIB2QJESAPIEOIAMFWMVAiQBFAmhAB8gJqlQhQFwnjBKgFyM0HEaBYRpERoDAgHswvEiD5DgFqA+KrBvTw5rws737efvcbBgiLfNi6AF1tzxWkqz+mAgrkFxcI6ObHX87Lu79+Km9++JQKyJ9fXB6gh7e/Vtpz89Nv5d1f3pXl7ypx6hl6F/7uTCUM6OqlNK8v32lAUhI0yJuAXZwGVarzADUoFZAvv7g4QFdbKS9zfdB6AJX1MP/w5mXOKNZUrAVQXhxUgpoVAOoIbAcLtBGrI0AEKB0QZn4EyCkxAhQG1M0vEiAClAWok4AlQO0SI0CRFjMCRID8gFhCi5m/igCpEvNXLR+QXNKItpj5q9YAqBPrEKBcQGnbF9cMKGn74mIBJbU4yZsvEVBqiwlQrMVslYAYTzWxhO2LiwSU6qQJUEL7U1VttYBi2xcXCSjDB/HY9sVlAspqPwGKlTKeH18KoCwTC29fXCSgLCet7lgDICusrPcAZ90yP+mvQSx5Nt8UWOKFc9YgACjXB/Hk58eXAii3/WXq8+MEaCWA8k3sQAlYvOnXjz8cFlC+k+Y8P75cHaBD5BcJUDag27PNo1ePP+ye/mPz6PfPqjcuE2n1BiS72ccHNYQOCej27Fn1UwE6PanYPPlc3l88S+vvXoBy228K7OCAlHVdSkDPy3L31Wv1MyogpTw9NWj8/GKn1VJpyt3TD4qL1B71xoiAmJUZAiqvn/w31cKOBGjsBGyn1crEql81oNs//fNp6oB2JEAj5xc7rb49O6mddO163m9OUvt7HB/ER84vdptthvka0PXm+diA9hrFjgCotxwN0KgJ2AkA0taF9BtUBAGNmYA9PiDjnzttdCoI0F6ARkzALgTQeAnY4wMawgf19PT9AAlURgS0/yh2YED/Q2T6gMZKwE4LEDAq1nZBMUAjJWAnBQgwAfOzVEDj5BcJ0IoAjZKAnRSg/XyQJTRPQF+2228/4UdTDDOKNYSOCOj+IpD8CB+P88MneaoJekSX7FWtLa4GTR5QFR+2AF2GskNRE6sgocfjMON92j4oH9DwCdgAIBVBO4B2X3+/D6BKddAjulipN1CBbVTgZZ70uilL/IDu//6v3iZW6c+Lb97hR3QNqUGD5xdzAF0+y/FBt2ePWgtqFRn0iK4BfdBBAbV90O4Pn/Oc9PvNxl1T+3ju80HZ7Q9UDZuADQFqjWKXGyn+VTLExG7PzA3attAjugYGNGx+MQNQ2WeYl4jU5oer7bbyQVgcBJZ93JeBQDEUQw6bXxwXUKV0J5WpeRavdW+ahUPkJd7+4CzkmICC0gZ0f7GpwybfbqPRAA2ZgB0PkFyeDd8wHqAB84tjAootyup2DO+D5gFImZj20EFAvE8yMHYhS74yH9CgSfv7Cz+hMQENloBN6HiqIICuNyEzA+3Q3XEtB7cjYIb2GqxrzL1tOEAMlR6AKhMLb07r9MZ1O7gnBo68ueawgDAf1APQ7Vls4wxsh+6uGA7QQAnY8QDJuViyBllAQgwGaJgE7JiAqvntaaIP0r2RCtQg2s8Hmc+cNKBK3qeMYhaQKllE+4xiMwBUqU94+t/pjTAljWhfQEMkYMcDVEXSkQ3End6IxnyEcB0SryclPMvEhtgBOx6guLQBCWcuVgeooMWd+RqPOOma0OEAVXFNUCU8JpbogzgcoBSH6QOqvhsC2kW2lLcA3V/Edli3WiXGALR3AjYASH15A0junw4+1rJXoCgB6ZPMrKuRfACiPj6I752ATQeUr0F5gITHHvBBP6OjWDA1BUDxxxZhO2pr0gOYfmksrBrReCuwtkamfhdFkQXIXo+UMgDt44Nkrl5LkpOu/Y3qtX1pfJB8aX0P5GM8UlG4hNodZa265vpuKQtQaxTL1aCopANiQvgAFYPI7AExrhF1AcU1qJ1fnKMGBX2Q9jZCYD6oiPqgDiDEBxVDAIrJfpG0mX21HQYswTHfvPB3DZZYoK7+mGIJgMxV+YAS8otFMWlA2pxKaA7NMG9tjjtWx421JMQzzPtIozW4ols3GUDGIUOHYd5zHHgdOFp/rT1sggYxX8wNnDTm6hFAqIwBCAhcWmKt9+q/GlBdYZukepfyBf5OOB+R9Fl9ZSgNMirk0aC6ahQN4rWzjmgQHkmNDIgjgFAfpMW+TPVBxiZDPqiuK5z7MECYDxodEK9HqNQhR475+lUSoOgwD0pu2DghQLLLGYBsVJRgYixQh5SgVk4JUJO0Z00k7c7b7V91YY2oiEbSLFCHl5rPnBQgvezDzQRV2Dlqs0VY/7WuS3vZnNl8Ssl+5swBKUQRQIz76+YGqJlKJAOq7gkDcvjMHlBpCLEUHwQIebvdN2k/TR8ERm88qvN0prXCCPmkI3E1KGUUqyAeD5BcaHVnpiggVVfoeawwdValGAqhFRr2BaTMEADaff19MA0/DKBGhdyMIg5Ie6hCpRwNodI6EFwNIznEmk8fQKfhdZyBALmE9gLUVbxEQGmBYgfQmClX2EaRDUgmXruAmOcLhgLU9kGHBmRnpFEfVAHi9ZxWZ90Anz4+CGYpQ4Bao9jBADkjGdJ+7DYzzoucCd1sAVkjywckEZXOvfmA+s7mDwjIpPBZkxRqDfqOiTmA5M1F0bDNBuSaXwagmIwCyLre1qAPnbQqAUIyJ9vJDC4MkPG2rBeggon+gKabUXRLOr/IUgEBQmWlP83kY6mAdH6RJfogCIipcTxhLzEaArTqEEBHSdr7APmypUj4Z/mYoTC6lzj0KX5AvWVgQDoBmwzI9A3M34XnyoUA4qGApmtium/MRtIcho2JgIpO3ZQB1RoQBOS4bDM/bWbzNmxcMiB8zoAD0pM2Jwfr5NIigJLW5icEqHQIxQGZCx1ApZNuDH4dlridNiDHyGI+iDMbA8Mkdeko0XQB3bzYbs/xI7oCgCCh2CjGWpMEUJcWNibuDxoHkDwT5+bP79AjuoKA1M6OCKB6+YO35uHOlUIvL04W0BdJxXM8TgyQQHKnTsCkFtCaLmIfWc096oDX/3WpW/DGASQFHrAEj+gKid5FxWLX1Bf4A/6KjYjMCEbdPCUlBkieHYQe0RXXoO7yREuDWLPTw6NBkpAIaZDH/A4H6O7nl2WJHtEVAmR2VrGgDzJ8AnteixqR9+vStwGPBOjmxbmklOuDVP9jgMDycmw7lTdsPDagmk+JHtEVA6QJeQHBquh+M0/Y6L3vUICutlLOs+MgQKipE8I8P16jE02v646KZpHMqqHdiI2GjUcHhEk6IPW0XYPL3f4KlgzrntoDbMCHwG20SNiY86zGJAFxAab1DiDGswHxTrYx62mfeQFivAVIDtdRQO1s4wIAyfwiJKR9EDPl5sIi5oMAIhMCBL58NoBkfpG1qxh2YWg60VLKRQHiogOIoRemArLZxiJ05YwAlaKVwQePRQvzu/rlBVTP5qH5Cchn/oC4cAAx6KwFF1bQtIWebLQcuNpnvSBA0KgYHwCQTBSFv3xWgIAKlYx7AaGpUx8gXoSzjfMC1BBSf3EfhOeWOeaDSmVgwUXqmQEyhMLbwyMPicOSujS0SD03QPq4vJRupwNyw8aZAxLygAEn8QVcke12Y0agzibtTR1cHRJuPD5rQEzAvhin6wzeBaBm6mzS3tS5D8G4M7oZAxKto6kIUBuQSAAkZP55nYA0kLAPUjxiPqj9KOdCfJDuS8KF4ccNOo+TC/zKeQKKbWrRVtckUl0N4liKbGGASswcbJ3xS+ZUBtcHNecrQKVcShxkC4FdP8CRFwggdA/18gAFdv3Aka7oAOpus+N2W/aiAAV2/cBIoDCPStU+yPN89CIBRebhtgSReHJF/g3D8wbERfRCWbJa49vdsaTZPNa1TogHTUxdqba+yNixGfTlrxUA4gKZJDjTkdpbqf1TOgIXVhL08JiAhhHhnO9Vv2X6D98o7FsAkPmIg8hxNIg79uTVIKgzbQ1aVMoVLcR9kDDze8wHLR9Q1uMGndKiVjV8VaGZGQGKzMzqP0KgwSC0zkUD4pGOGqeEzdrWAShiKgSIh0cjFBCMBtYAKBgRd3xQPcyvxwcBQgkf4nHZiweU9pxzozXrAxR/ztmJulcIyLs6UdeJ7Jh7eYC4b81MZD9Fv1BA6MwMzu1XD6gzM4vFOqsDBOcdLb9DgLgdyvWmhZ5fsAZA6OyLAAFA+3wBAVo5ILidigCNWSJABIgAESACRIAIEAEaARAioUOXAnU9b+td108IUEQIUEQIUESOtAVvPkKAIkKAIkKAIrI3IH3cKypftttvP/lulAeg4iKPTvPd9/Bm+807/23+tvSVfQHp417ROnm0oD09ryNX3r58DHSyqvtiD5zrSqiun+wLSB/36q235y92Kn78xXPXw1uPipT1kY4BscdhDidD+KBQs3wa9PD2V5+J3f3st5Sbn/7jNbHAt+0hAwCS51B65OaF12G89PogabE+LZJHX8qTU3EZQYEGAKSOe/XX4m2uOul30lI8VuscK9uR4T3QIKNYeNzAe1qPOAGyHkB3fwsB+hj6X9VT9gUU4uMcs9wRrwbJ2x7+7XHGHwMmFvLuvWVfQMHgo6r0e9RgHOS9rfLg3tBqDBdEkXRMCFBECFBECFBECFBECFBECFBEjgfo+vGH3Vev2+8ibx1XjgoIeZcAWSFAAbk92zx6VZvY7nSz2TyvwLzabJ58JkBKbs+eVT8KkAKyO32+O3384f7ihAApUdZ1WQPS/1h3xUjZFwGSclnZkvx3zCWN95vNSal9z+3ZcwIkBQJSDkmP+ARIizIxEAdJMMrEnmKh0XHlSE76xDhpxUr6HnLSUMAwf12N8o9e18P8CcVBXpkcGCMEKCIEKCJTATRZIUARIUARIUARIUARIUARIUAR+T9kfgdObET+swAAAABJRU5ErkJggg==" alt /></p>
+<!-- We can also override the default geom to display the convex hull in a different way: -->
+<p>凸包を別の方法で表示するようにデフォルトのgeomをオーバーライドすることもできます。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, hwy)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_chull</span>(<span class="dt">geom =</span> <span class="st">&quot;point&quot;</span>, <span class="dt">size =</span> <span class="dv">4</span>, <span class="dt">colour =</span> <span class="st">&quot;red&quot;</span>) +
+<span class="st">  </span><span class="kw">geom_point</span>()</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- ### Stat parameters -->
+</div>
+<div id="stat" class="section level3">
+<h3>Statのパラメータ</h3>
+<!-- A more complex stat will do some computation. Let's implement a simple version of `geom_smooth()` that adds a line of best fit to a plot. We create a `StatLm` that inherits from `Stat` and a layer function, `stat_lm()`: -->
+<p>さらに複雑なstatはいくつかの計算を行います。プロットにもっともフィットする線を追加する、簡単なバージョンの<code>geom_smooth()</code>を実装してみましょう。<code>Stat</code>を継承した<code>StatLm</code>とlayer関数<code>stat_lm()</code>をつくります。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">StatLm &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;StatLm&quot;</span>, Stat, 
+  <span class="dt">required_aes =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>),
+  
+  <span class="dt">compute_group =</span> function(data, scales) {
+    rng &lt;-<span class="st"> </span><span class="kw">range</span>(data$x, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>)
+    grid &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">x =</span> rng)
+    
+    mod &lt;-<span class="st"> </span><span class="kw">lm</span>(y ~<span class="st"> </span>x, <span class="dt">data =</span> data)
+    grid$y &lt;-<span class="st"> </span><span class="kw">predict</span>(mod, <span class="dt">newdata =</span> grid)
+    
+    grid
+  }
+)
+
+stat_lm &lt;-<span class="st"> </span>function(<span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">geom =</span> <span class="st">&quot;line&quot;</span>,
+                    <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>, <span class="dt">show.legend =</span> <span class="ot">NA</span>, 
+                    <span class="dt">inherit.aes =</span> <span class="ot">TRUE</span>, ...) {
+  <span class="kw">layer</span>(
+    <span class="dt">stat =</span> StatLm, <span class="dt">data =</span> data, <span class="dt">mapping =</span> mapping, <span class="dt">geom =</span> geom, 
+    <span class="dt">position =</span> position, <span class="dt">show.legend =</span> show.legend, <span class="dt">inherit.aes =</span> inherit.aes,
+    <span class="dt">params =</span> <span class="kw">list</span>(<span class="dt">na.rm =</span> na.rm, ...)
+  )
+}
+
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, hwy)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_point</span>() +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_lm</span>()</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- `StatLm` is inflexible because it has no parameters. We might want to allow the user to control the model formula and the number of points used to generate the grid. To do so, we add arguments to the `compute_group()` method and our wrapper function: -->
+<p><code>StatLm</code>はパラメータを持たないため柔軟性がありません。モデルの式やグリッドを生成するのに使われる点の数をユーザーが操作できるようにしたい、と思うかもしれません。そうするには、<code>compute_group()</code>メソッドと先ほどのラッパー関数に引数を追加します。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">StatLm &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;StatLm&quot;</span>, Stat, 
+  <span class="dt">required_aes =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>),
+  
+  <span class="dt">compute_group =</span> function(data, scales, params, <span class="dt">n =</span> <span class="dv">100</span>, <span class="dt">formula =</span> y ~<span class="st"> </span>x) {
+    rng &lt;-<span class="st"> </span><span class="kw">range</span>(data$x, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>)
+    grid &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">x =</span> <span class="kw">seq</span>(rng[<span class="dv">1</span>], rng[<span class="dv">2</span>], <span class="dt">length =</span> n))
+    
+    mod &lt;-<span class="st"> </span><span class="kw">lm</span>(formula, <span class="dt">data =</span> data)
+    grid$y &lt;-<span class="st"> </span><span class="kw">predict</span>(mod, <span class="dt">newdata =</span> grid)
+    
+    grid
+  }
+)
+
+stat_lm &lt;-<span class="st"> </span>function(<span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">geom =</span> <span class="st">&quot;line&quot;</span>,
+                    <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>, <span class="dt">show.legend =</span> <span class="ot">NA</span>, 
+                    <span class="dt">inherit.aes =</span> <span class="ot">TRUE</span>, <span class="dt">n =</span> <span class="dv">50</span>, <span class="dt">formula =</span> y ~<span class="st"> </span>x, 
+                    ...) {
+  <span class="kw">layer</span>(
+    <span class="dt">stat =</span> StatLm, <span class="dt">data =</span> data, <span class="dt">mapping =</span> mapping, <span class="dt">geom =</span> geom, 
+    <span class="dt">position =</span> position, <span class="dt">show.legend =</span> show.legend, <span class="dt">inherit.aes =</span> inherit.aes,
+    <span class="dt">params =</span> <span class="kw">list</span>(<span class="dt">n =</span> n, <span class="dt">formula =</span> formula, <span class="dt">na.rm =</span> na.rm, ...)
+  )
+}
+
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, hwy)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_point</span>() +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_lm</span>(<span class="dt">formula =</span> y ~<span class="st"> </span><span class="kw">poly</span>(x, <span class="dv">10</span>)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_lm</span>(<span class="dt">formula =</span> y ~<span class="st"> </span><span class="kw">poly</span>(x, <span class="dv">10</span>), <span class="dt">geom =</span> <span class="st">&quot;point&quot;</span>, <span class="dt">colour =</span> <span class="st">&quot;red&quot;</span>, <span class="dt">n =</span> <span class="dv">20</span>)</code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAAAq1BMVEUAAAAAADoAAGYAOpAAZrYzMzM6AAA6ADo6AGY6kNtNTU1NTW5NTY5NbqtNjshmAABmtv9uTU1uTW5uTY5ubo5ubqtuq+SOTU2OTW6OTY6Obk2ObquOyP+QOgCQkGaQ2/+rbk2rbm6rbo6rjk2r5OSr5P+2ZgC2///Ijk3I///bkDrb///kq27k///r6+v/AAD/tmb/yI7/25D/5Kv//7b//8j//9v//+T////yK+GzAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAKtElEQVR4nO2ciXbdNg6GmdSTaW4XJ9PW6XScJplpmqWuHG+x3v/JRtRKkSABidT+45zWNzREQt8FflKLqXJY0NTSAazdAIgxAGIMgBgDIMYAiLHBgLLKmp+GEU3Tu002AgABUJwbAE0F6GiGDPK0ARAAxbkB0KyAlFIAFACktAEQAAEQNEjulhbQ7OFPPwIAAVCcGwABUJwbAAFQnBsAAVCcGwABUJwbAAFQnBsAAVCcW1pAuB8UBoQ7igAEQHZbUkBH1qDHt5d5/vDq9MPfIUCzhz/9CFJAV6fLEtLVjwBE2d3Pv13mD//+lN/99AmAiAJ790eRPXe//J0//Po+z/9RGJNxu7MwoKsLXV43P9SAtE38xQ11WzaDitR5NDMIgOwEOmm7gAYFTGfQ49sLzGIhQFgHDbGJ4xrqBkBLjQBAABTnBkAAFOcGQAAU5wZAABTnBkAAFOeWEFD5SGPm8KcfIR2g6qHYzOFPPwIAAVCcWzpA0CAO0BLhTz8CAKHE4tzSAYJIAxAAEW3pAEGDOEBLhD/9CACEEotzSwcIIs1YCSi6l9UaMsjTlg4QNIgDtET4048AQCixOLd0gCDSAARARFs6QNAgDtAS4U8/QgJATeYgg2hAjfZAgwAIgIi2eEDQIA7QkuFPPwIAzVRiKjhgU33Jw09x6OQifX19XZy/IjpvrNXv5OGnOHRqQNfaMiOHAIgG1BICIA+ghhA0qA8oa/hkpRxhFnMAdVYlEwCFAdnlpP997BLrrAFk0lCNTXuW2wCU1XwAyAcoc6d0ALLtkBp0czp9/0m4NYU64Cymt3y5+pHboqtOEyqD9g6ohhTeHqcWGlKDjgCoSJ3wFl31C1T2e1R7ea+K2+Tt5XfvmS26jpVB9+dP3vRbCjLMFl2dBvVEaK8a9KdS3/xlNny8lG/RJVn0bB2QziKlnpef6tqSb9F1DEAVoqcf8nKXt0KDPOsg67FPc4vabBYuFCPWk0sA+qzUWVFq/UJrre3JenBY/VD9ZtmlRswVyeyAvr5W6oX+8KVMoaGAMrVzQPfnHi5iQNWzjh0DqvJHAIjUIPNO9T41SJdYrdAcILLzDtCk4U8/gg9QTclPiBnwCIC+qFCZeXuv66THh6kdq0h7n9cKqCgxz/zOADKUVhFtVAyWzPcPWSmg+3NGoyWAMuds6Ri2CEhfi0VnUEtol4Dy/PZZjAbV/yDa3CO3qEF1Go2exRrzP6/f+CxWpI+258Mz6BiAipW0n00YkLuw9q6k7dLaXomNAGQrbuBajHS1ulktoLrEhmvQQQB9fX2WLoOIVz6yrQMav1B0haV654OKYcMa9PX1aEBOk3XdmjT8FIeO0yDfjcQAoG7ayno/rQwy3OzCM9us3iLOvNdF7mvy9UYB0vfqaxsg0rVqcBpkulnabbZZvUUA6neRe5oGARLZAEA9EgAEQB5AXg2qhUW5bvbJm21WbxyMWTVoJCBuQOtUNz6LTQBIIzIm/OMBavKWGLD5Vf2ecNNElZigN6at7SX0TS1QYq3ykYvr6lfdm+ZekeZ7Y9q6Xrxus4i0Y+WozK8aQHWTdYT570Bv4+MY4OIeMzQOB7Ukg5o3zY+QQW7vAg1qosuOqEHCAdsAqSvYfc9iw+Iir/EPCcheHpsTmuHi6S3BSnqEmzHq5IBMNTY+KwNQQFZtHY89c5mbMu7PLAaoXFS3a8Z1ATKzezlAdVN2dEA+DeqajFdl1qBBSql5AbFuRjwrmMWaGaT97SyAwitAEpCTaP2lnZNZ/kC4VSEBaO51EHMN0d3Vdy5ceupljOBqkzcQ9rqi1+SsN9YAqMpolQFQ7zMxYy0PSDltswCSXoWqPDNXj6b3TBq0FCCpW2+CHdRbmkCU27YuQPnRARnZTlWdCShQiQNLTO5GSdWsgAy9JHU7y7Pe38D4exsg0mxb02Tm7noBVQ1LAOpV98oBGX+PdyxAvAYZLXNr0CoADXBzVySpR7CbVqBBg9zq2/qzAVK022oBNXdlZiuxjQFSYUDpRdrXGwBVTd58XDGg0K6MqQHZ93XXD6gWGXLfmAk0KBbQ3cvT6VK4RVfaOUa64VdcIM6DgYGA9J44d/96z2zRJYiLuXVFARr+VEM1j07EgEIPlkSAbjSVIdvjeNp6yiEK39Ua9lDVmBhQ8CuQlVje32CJ3KJLYGXcEx9BvpoVPiCJl947KLxFl+D7HZlBTg6ly6Dy+XfQTQjo4dVFnjNbdAnCH6tBqn+fMZkGlUutsJsM0N3LS00pVoNGu/EbXYwbIRWgik8u36IrTfhdU1pAXV+pAF2dtF1Oug4yi8K5beQCauvI7c69u9QftelM1e8BpigxwsRnLnMzZZW48WhrUKfETneee211D7n5srYk3o0Aynqr3RGAGipKOc/e9gKo91BmHKDM1iBBvGsBFNag+rNx6CANMtJmcLyrASRxG3ifusWt/99p0LBANgUosBMIfWj7t0XjA1klIKLEVPuyh2iJXLlVdeWpRGG8awREiLTxk13ate55N3WNC6T8tDVA5J8w2N0BENNdswZo1z7jAik/rRBQQIOoV6yo7ppVVWA1IIx3lYCCTdfUTinEsipRINsDpNuCt2Hbm2D7AdQWgru6tkusOdSunW4Z0F2LugVLPQMgmtYGqLuwcoXEEunmUPtarP6sDEDElR31DIBo2g+gTq4BiAJkTGgGINWufXYDaKwGmTN+u+Ix3HejQWPd6mJqP04SyFYBlUnX3ltuq43KoLhANgrInsVqQH3JAiBDPrpkAiASUOUHQG1bO/H1/aBBs48AQBsH5FvGBUrMXnZyZbdpQL4LgZBIWxcurHBPBGgeK8/K1+7+rgfI6sLXlTSSoQdEpsb+MyjyzKFBbBtmsTnCn36EHQJqK897lTKkt/0B6rSbdHNlH4B6bgAEQNCgMW6YxZYaAYAAKM4NgAAozg2AACjObcuAiPtB6QPZMCDijuIEgQAQAMUFsmFA0KAhbgC01AgABEBxbgAEQHFuAARAcW6jAflNuPdSWrfJRwUgxg2AGDcAYtxW+greegyAGAMgxgCIsVSA6l1fObs5nb7/JOlPb4/Km95kTdDf49vTd+9FnbknkQhQvesr56Y3G2z30wvalQR3/lHiVLrdtLvUBc11SwSo3vVV4truyBh0+vk3QWeP7/i8yKt9IGXWbqfZWUINInqnTJJBj+/+kJTYwyuiJly7++V/khLLydjSAdLbUfJ291IS6tWFSIN0UQuySO+XqbdbZY36ipMBKnd9FTnyiVacjUyktfGF3duLNmSUUKWbxaQnJDijaj4RAue7e/iPENBHYshEgIR8ehsvB02UQbq7x//yCvxRVmJktSYCRK8hSD+ZXIrXQZLuCjGXrL7Irw4racYAiDEAYgyAGAMgxgCIMQBibMWAvjz9cPvPN3Yr0TSprRsQ0QpArQFQwO7P1ZPfqxK7faaUelGA+V2pb/4CoNLuz58X/5WASiC3z17cPnv64evrMwAqrayuzxWgb6tCKxiV9QVA2j4XtZQXaDSNP5U6y2vtuT9/AUDaTEClINUzPgDVVpaYsQ7SYMoS+5ZaGk1q6wR0f37WiHTJSmsPRNo0Y5r/UszyT95U0/wZ1kFemxtMYwDEGAAxthlASxkAMQZAjAEQYwDEGAAxBkCM/R/nnfjv4HUqjQAAAABJRU5ErkJggg==" alt /></p>
+<!-- Note that we don't _have_ to explicitly include the new parameters in the arguments for the layer, `...` will get passed to the right place anyway. But you'll need to document them somewhere so the user knows about them. -->
+<p>注意すべき点として、新しいパラメータを明示的にlayerの引数に含めることは、必ずやらなくてはいけないわけではありません。いずれにせよ<code>...</code>は正しい位置に渡されます。しかし、ユーザーがそれについて知ることができるようにどこかにドキュメントを書く必要はあるでしょう。 <!-- Here's a brief example. Note `@inheritParams ggplot2::stat_identity`: that will automatically inherit documentation for all the parameters also defined for `stat_identity()`.--> ここに短い例があります。<code>@inheritParams ggplot2::stat_identity</code>は、<code>stat_identity()</code>について定義されたすべてのパラメータについてのドキュメントを自動的に継承してくれます。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#' @inheritParams ggplot2::stat_identity</span>
+<span class="co">#' @param formula The modelling formula passed to \code{lm}. Should only </span>
+<span class="co">#'   involve \code{y} and \code{x}</span>
+<span class="co">#' @param n Number of points used for interpolation.</span>
+stat_lm &lt;-<span class="st"> </span>function(<span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">geom =</span> <span class="st">&quot;line&quot;</span>,
+                    <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>, <span class="dt">show.legend =</span> <span class="ot">NA</span>, 
+                    <span class="dt">inherit.aes =</span> <span class="ot">TRUE</span>, <span class="dt">n =</span> <span class="dv">50</span>, <span class="dt">formula =</span> y ~<span class="st"> </span>x, 
+                    ...) {
+  <span class="kw">layer</span>(
+    <span class="dt">stat =</span> StatLm, <span class="dt">data =</span> data, <span class="dt">mapping =</span> mapping, <span class="dt">geom =</span> geom, 
+    <span class="dt">position =</span> position, <span class="dt">show.legend =</span> show.legend, <span class="dt">inherit.aes =</span> inherit.aes,
+    <span class="dt">params =</span> <span class="kw">list</span>(<span class="dt">n =</span> n, <span class="dt">formula =</span> formula, <span class="dt">na.rm =</span> na.rm, ...)
+  )
+}</code></pre></div>
+<!-- ### Picking defaults -->
+</div>
+<div class="section level3">
+<h3>デフォルト値を使う</h3>
+<!-- Sometimes you have calculations that should be performed once for the complete dataset, not once for each group. -->
+<p>場合によっては、それぞれのデータに対して一度づつではなく、データセット全体に行うべき計算があります。 <!-- This is useful for picking sensible default values. For example, if we want to do a density estimate, it's reasonable to pick one bandwidth for the whole plot. --> これは、理にかなったデフォルト値を選ぶのに役立ちます。例えば、密度推定を行いたいとき、プロット全体に対してひとつのバンド幅を選ぶのは妥当なことでしょう。 <!-- The following Stat creates a variation of the `stat_density()` that picks one bandwidth for all groups by choosing the mean of the "best" bandwidth for each group (I have no theoretical justification for this, but it doesn't seem unreasonable). --> 以下のStatは、それぞれのグループに最適なバンド幅の平均を全グループのバンド幅として使う（この方法に論理的な根拠はありませんが、非合理的ではなさそうに見えます）、<code>stat_density()</code>の一種をつくります。</p>
+<!-- To do this we override the `setup_params()` method. It's passed the data and a list of params, and returns an updated list. -->
+<p>そうするためには、<code>setup_param()</code>メソッドをオーバーライドします。これは、データとパラメータのリストを渡すと更新されたリストを返します。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">StatDensityCommon &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;StatDensityCommon&quot;</span>, Stat, 
+  <span class="dt">required_aes =</span> <span class="st">&quot;x&quot;</span>,
+  
+  <span class="dt">setup_params =</span> function(data, params) {
+    if (!<span class="kw">is.null</span>(params$bandwidth))
+      <span class="kw">return</span>(params)
+    
+    xs &lt;-<span class="st"> </span><span class="kw">split</span>(data$x, data$group)
+    bws &lt;-<span class="st"> </span><span class="kw">vapply</span>(xs, bw.nrd0, <span class="kw">numeric</span>(<span class="dv">1</span>))
+    bw &lt;-<span class="st"> </span><span class="kw">mean</span>(bws)
+    <span class="kw">message</span>(<span class="st">&quot;Picking bandwidth of &quot;</span>, <span class="kw">signif</span>(bw, <span class="dv">3</span>))
+    
+    params$bandwidth &lt;-<span class="st"> </span>bw
+    params
+  },
+  
+  <span class="dt">compute_group =</span> function(data, scales, <span class="dt">bandwidth =</span> <span class="dv">1</span>) {
+    d &lt;-<span class="st"> </span><span class="kw">density</span>(data$x, <span class="dt">bw =</span> bandwidth)
+    <span class="kw">data.frame</span>(<span class="dt">x =</span> d$x, <span class="dt">y =</span> d$y)
+  }  
+)
+
+stat_density_common &lt;-<span class="st"> </span>function(<span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">geom =</span> <span class="st">&quot;line&quot;</span>,
+                                <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>, <span class="dt">show.legend =</span> <span class="ot">NA</span>, 
+                                <span class="dt">inherit.aes =</span> <span class="ot">TRUE</span>, <span class="dt">bandwidth =</span> <span class="ot">NULL</span>,
+                                ...) {
+  <span class="kw">layer</span>(
+    <span class="dt">stat =</span> StatDensityCommon, <span class="dt">data =</span> data, <span class="dt">mapping =</span> mapping, <span class="dt">geom =</span> geom, 
+    <span class="dt">position =</span> position, <span class="dt">show.legend =</span> show.legend, <span class="dt">inherit.aes =</span> inherit.aes,
+    <span class="dt">params =</span> <span class="kw">list</span>(<span class="dt">bandwidth =</span> bandwidth, <span class="dt">na.rm =</span> na.rm, ...)
+  )
+}
+
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, <span class="dt">colour =</span> drv)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_density_common</span>()
+<span class="co">#&gt; Picking bandwidth of 0.345</span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAAAz1BMVEUAAAAAADoAAGYAOpAAZrYAujgzMzM6AAA6ADo6AGY6OgA6OmY6OpA6kNtNTU1NTW5NTY5NbqtNjshhnP9mAABmADpmOgBmtv9uTU1uTW5uTY5ubo5ubqtuq+SOTU2OTW6OTY6Obk2ObquOyP+QOgCQOjqQkDqQkGaQtpCQ29uQ2/+rbk2rbm6rjk2r5OSr5P+2ZgC2///Ijk3I///bkDrb/9vb///kq27k///r6+vy8vL4dm3/tmb/yI7/25D/5Kv//7b//8j//9v//+T///9ymRsDAAAACXBIWXMAAA7DAAAOwwHHb6hkAAALYElEQVR4nO3dDXudthUH8JvExM06e+vw6m5t2nXJli3tmjrx4jI51y/h+3+m8Y5ejnTEBV0E/M/zxMaKriz9LASXK8QuRzhjN3cFYg8AMQEgJgDEBICYABATDFBmBJFkTx6felgRAALQuCIABKBxRQAIQOOKABCAxhUBIACNKyJKoCSZqHVpmo4tIkaghBI6DChbI1CpMxmQLLQaoO7LgHbQqQByp6YZgJypaffl4CIiBErqZF0IQG0AiKnadECp9PXAIiIG0oUA1ESSTQzUCwFISwXQtoE0IQA1MR1QCwMgS+rSgPwiITcPilT7PntM0oMSKVnpQuvvQX5VCwDUbQBITQUQkwogJnX9QIrQ4Nb1b1LXBJRkAHJWDUBM1QDEVE0FkoVGALWbAFJSAcSkAohJBZA7VZ61sF4gSQhAZSR6MoDUABBTtUBAzQ8AklM3AtQLAagMADFVmw5I8QGQmQogJnUzQJ0QgMoAkLtqCZEMICkAxFQNQEzVKKBWaBRQ/SOApFQAMakAcqdqPgDSU7cEZEl1ty5uoIfvz7/6rdn+/NMrAGlApcnNn5ofbs4BpAM9/O1DfvfXD9X23bc/+gNZRpvVAd1991v+8MO7cvPzz7/Uu9jz58/5Aizzfg+ZDmxM/Y1hLnAL9OmrDujm5ZAxyHa8It7jM39+vQPVXSi+HlRsAcgE6segm/MyXgJIBfr808v+KIYeZAI150F1JwIQAUQHXzXrmwp9zgfbOgAxrQMQ0zoAuVtn+lRp6wVSb1DgWxce6PbpFYCajXiAHJ9fAKhRsNU4KqD7i92TN0+v9i/+uXvyu7Mi4dpTKyCQdC+0T+uCAt1fnBX/CqDTk8Lm2cf88fWZl89WgKq967oEuszz/Rdvq38A6qPsNPn+xVXlUvaeKmFRQCmVGgYov332X989LChQt6qQT+vCAlW7WPGlBrr/879e+B7QNgJ0f3FSD9L10PPr7sTTZytA3WG+BrrdXS4GSIjGgmZb/Hsx90wgc/FSPa8QjRCAyCIqHWGXWDwQM+GXB2q/AIgsQnTfNgqUk0IA6jO7gUT33XY8nwzof2REDtQe4YutzQKRo1AH1KUAiCpCeABZTo82AiQ7AMgsQgJKxWaBKKE6r9KBAGQUIeQOlBZcAFKL0EagOYEeXzsufgQHIoTKVBER0LXr6tBsQDLCvED7L78OBuSzxgIJJPtUn2eEBxJG1ECP//h3uF3MaxEKQyg3RiA7EPlp0KQ96PpszBjEhNdsaCKTkLbT1EiSY6K50lag/e8/BhykD+1BRgcqutBMPeh6V4b9U7JZgLRzoCrmAsqDHub9FsLRhXKiAwFICqUD9alkCccAcsYxgHQhqgMBSAqyAwGoC3m0AZCWrQwJKAWQni9TgeRksgRqfjn76+L52OcQIOlNhfrEWVpoIqB5elBCJ5upNiAl75aB5JwAojL3OaWrz2rTAVSHHYgepjcMlAJISu2ySkB6XgBl9dnOMCDyVHELQHq7ZwJ6fO24WhYIqJuYKac2eV1ApFBooD0zpTwAUKljAxJdqtHseYDK+dPO21pCAHVfogJKjJipBwnpqx0ojaQHzQYk9RU5cw9EFbw2oIRMdgF1/crsQFVeQmi1QPIZT5e7B6IL3gKQkDcmAbJldqQuHsjWKWYA4iIckPy+vcnenh0RI1CT1xRaG5DUQgeQtXUAKoPsQBsE0uf89ECO1hlCGwLq8s8BdHAEBRIkEL2HOYDo025rEVnMPUhtnwXI1ToAbQgoIZJdQKJ+AXOHky4UDVC/nvTdN+deyyXzQOqPon7FQoH69aTLFV3v/vLuICC9dQRQulCgfi3XTyXT+1eTA4n6FexqE8JMjgFIWk+66UXsetLM/Gc9QdSvYOc9UxOmx0+WHg0krSddr3xbh+Ov5NODpM/bRXZ4DyIvYDuKCN2DHr5vfQYCmcdo6cbm5iX8gi7CTI4ASFrT/u6bV91/OyrhBZTpQB6rjx4XaP/l18718Mz1pGWfCYDkS9SzAqVG1ECn7qWEzPWk6xXJDzqKUafBw4HUYoL3oHCXXP2A5M8RsyT1aN3mgIR084EXkFLOcoESI5m8HCjPZTgYiJrp4CpiWUByAIhphyeQ0JPDAXFxXKA08WidWtLGgKpXbRWI/lhUCV8gqSwAkXl1IHPGp7MIAA0GOjiOCpRmvkB9YVsDKl8GIFs7BgB1pS0WKNGT6QmGSgCIafQgIG2qtX7ni7OIhQKlzeu8gPS56JsBynwfBQAgZ971AVE+o4C0yfoAAlDavtATSJusr94i7S4CQPEDGWsC8Y1uW+j9tA0A2fP2ZQLI0WblbgYAmUnq7R7KSijuIgC0RqC+febipbY2i9UAWRb5A1DXkiMAyUIAastdKpAxBAFIrYSxMiILJLeOFFomkC20KcC2tY6lkGfyeq2ybJY80crJwyLyHqTuu30Z0fQgWyUAFAuQcga6WCD99l2qHcoISwn5AHWFrA9IPQ0+EChbDJCxhwFIrYTRgcIB5eQ+BqA+mexCaweihNYLpF46pmusXy8dAEQexwAkJVNdCEByMtGFIgcyh6ChQISQH1C2PCD1I3RLjScE8rmbYXFA5syDg4FqIQApyabQgoC0eU50jYm5K4aQNxC7eMP2gEyhuIGIPey4QO5FrLKogLTpzHSNqUnOg4DMJR3s68RVGysAMoSGAbkXMAVQ7l76bV4gyscJRN8NNwiIWPLEsqBwvbEKIGOmtaMIclUh+9300QAZ972RNbbcTzkIaNiKHrMCJUOBjL/0VED2O1nnBeq3hR+Qpc3aPsYAESt6GPTxAXHNc+8JA4HM9Risd5FFAmQukEC2biIg8tdZblCYE4juQA4gx9GYWonRmpnssFEDEYMC1brpgKhjAj17ekagZCiQ64SXWg3WnlneyXogcmrnnED0UeVQoIRKtRcszHc2slAEQEkHRJzaUq1zvqdUupAPkHGrb6YIxQDUnfr7Admff9CUl1CproLNK7zEpJjZgJIWSPexAnFt7oXKywRdOAoWxifd5pSGEED9csn9lg6UtPd0Gz40kHNx9q7MpP2eyIkJlbkR0ie0GR9IBwDql0vut3SgpFmZRJg+JBB76bjXSBL9FpfWiCrCqECqfVoWAKhfqlRatDRXRoukrZzHGgtNpb2ArKmUWxNCr0aq/LoAQP1it/2WvFxyUdO8qpXHlOgqJprU3A5KxH8JoVaoIJrmdyphLpesLJzs++cf2VemLjgAENWDAJQPGINCtCNYwQGA+uWS+y0A5cZ5UNl17OdBU7cjWMEhgOgI245gBQMIQOOKABCAxhVxPCDvcD7DZUTecAV7BoCYABATAGJiKqDVBoCYABATAGJiEiD5sZF8lJ8KeGc9/8M7PltbiT9+8K6Ed0wBpDw2ko8bf8z3r6orwL6VuPHMOySmAFIeG8nG3bc/+mYtL276RnWleEB+35hqDOofIMnE559/8d7F7r77j/cuFnMPyuXHRnJx89J/DCofllf2DK+QL4ROGNMASY+NZKJo7wAg5dmmTN5iEPwUYJSe6CjmPezWDwj05Hz4uz+Q8nHehDEF0ACfMgYc5t/772Ix9yDlsZF8DAAqxhXvNn869z9nGhA4k2YCQEwAiAkAMQEgJgDEBICYODrQ7dOr/Rdv9VQiKZKYA4hIBVAXAHLE/cXuyZt6F9uf7na7ywLmzW737COAqri/OCv+VUAVyP70cn/69Orx9QmAqqj2rusaqHlGd2FU7V8AKuO62JfKx5eXGr/udid5M/bcX1wCqAwZqBqQmiM+gJqodjHpPKiEqXaxF9SpUSRx3EH6pB2kK6ty7MEgLYd0mL8tjvJP3taH+ROcB1kjXpg2AMQEgJjA5Q4mAMQEgJgAEBMAYgJATACIif8DcEj58yjqX3oAAAAASUVORK5CYII=" alt /></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, <span class="dt">colour =</span> drv)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_density_common</span>(<span class="dt">bandwidth =</span> <span class="fl">0.5</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- I recommend using `NULL` as a default value. If you pick important parameters automatically, it's a good idea to `message()` to the user (and when printing a floating point parameter, using `signif()` to show only a few significant digits). -->
+<p>私は<code>NULL</code>をデフォルト値にすることをお薦めします。もしも重要なパラメータを自動で選ぶのであれば、<code>message()</code>でユーザーに伝えるのがいいでしょう。(あと、浮動小数点のパラメータを表示するときは<code>signif()</code>を使って数桁だけを見せるのがいいでしょう)</p>
+<!-- ### Variable names and default aesthetics -->
+</div>
+<div id="aesthetics" class="section level3">
+<h3>変数名とデフォルトのaesthetics</h3>
+<!-- This stat illustrates another important point. If we want to make this stat usable with other geoms, we should return a variable called `density` instead of `y`. -->
+<p>以下のstatは別の重要な点を示しています。もしも他のgeomといっしょにこのstatを使いたい場合は、<code>y</code>ではなく<code>density</code>という名前の変数を返すべきです。 <!-- Then we can set up the `default_aes` to automatically map `density` to `y`, which allows the user to override it to use with different geoms: --> そうすることで、<code>density</code>を<code>y</code>に自動的にマップするように<code>default_aes</code>を設定することができます。ユーザーはこのaestheticsをオーバーライドして別のgeomで使うことができます。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">StatDensityCommon &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;StatDensity2&quot;</span>, Stat, 
+  <span class="dt">required_aes =</span> <span class="st">&quot;x&quot;</span>,
+  <span class="dt">default_aes =</span> <span class="kw">aes</span>(<span class="dt">y =</span> ..density..),
+
+  <span class="dt">compute_group =</span> function(data, scales, <span class="dt">bandwidth =</span> <span class="dv">1</span>) {
+    d &lt;-<span class="st"> </span><span class="kw">density</span>(data$x, <span class="dt">bw =</span> bandwidth)
+    <span class="kw">data.frame</span>(<span class="dt">x =</span> d$x, <span class="dt">density =</span> d$y)
+  }  
+)
+
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, drv, <span class="dt">colour =</span> ..density..)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_density_common</span>(<span class="dt">bandwidth =</span> <span class="dv">1</span>, <span class="dt">geom =</span> <span class="st">&quot;point&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- However, using this stat with the area geom doesn't work quite right. The areas don't stack on top of each other: -->
+<p>しかし、このstatをareaのgeomと組み合わせると正しく動作しません。面が積み重なっていません。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, <span class="dt">fill =</span> drv)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_density_common</span>(<span class="dt">bandwidth =</span> <span class="dv">1</span>, <span class="dt">geom =</span> <span class="st">&quot;area&quot;</span>, <span class="dt">position =</span> <span class="st">&quot;stack&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- This is because each density is computed independently, and the estimated `x`s don't line up. We can resolve that issue by computing the range of the data once in `setup_params()`. -->
+<p>これはなぜかというと、各グループの密度が別々に計算されていて<code>x</code>の推定値が含まれていないからです。この問題は、<code>setup_param()</code>で一度だけデータの範囲を計算するようにすることで解決できます。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">StatDensityCommon &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;StatDensityCommon&quot;</span>, Stat, 
+  <span class="dt">required_aes =</span> <span class="st">&quot;x&quot;</span>,
+  <span class="dt">default_aes =</span> <span class="kw">aes</span>(<span class="dt">y =</span> ..density..),
+
+  <span class="dt">setup_params =</span> function(data, params) {
+    min &lt;-<span class="st"> </span><span class="kw">min</span>(data$x) -<span class="st"> </span><span class="dv">3</span> *<span class="st"> </span>params$bandwidth
+    max &lt;-<span class="st"> </span><span class="kw">max</span>(data$x) +<span class="st"> </span><span class="dv">3</span> *<span class="st"> </span>params$bandwidth
+    
+    <span class="kw">list</span>(
+      <span class="dt">bandwidth =</span> params$bandwidth,
+      <span class="dt">min =</span> min,
+      <span class="dt">max =</span> max,
+      <span class="dt">na.rm =</span> params$na.rm
+    )
+  },
+  
+  <span class="dt">compute_group =</span> function(data, scales, min, max, <span class="dt">bandwidth =</span> <span class="dv">1</span>) {
+    d &lt;-<span class="st"> </span><span class="kw">density</span>(data$x, <span class="dt">bw =</span> bandwidth, <span class="dt">from =</span> min, <span class="dt">to =</span> max)
+    <span class="kw">data.frame</span>(<span class="dt">x =</span> d$x, <span class="dt">density =</span> d$y)
+  }  
+)
+
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, <span class="dt">fill =</span> drv)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_density_common</span>(<span class="dt">bandwidth =</span> <span class="dv">1</span>, <span class="dt">geom =</span> <span class="st">&quot;area&quot;</span>, <span class="dt">position =</span> <span class="st">&quot;stack&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, drv, <span class="dt">fill =</span> ..density..)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">stat_density_common</span>(<span class="dt">bandwidth =</span> <span class="dv">1</span>, <span class="dt">geom =</span> <span class="st">&quot;raster&quot;</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+</div>
+<div id="exercises" class="section level3">
+<h3>Exercises</h3>
+<!--
+1.  Extend `stat_chull` to compute the alpha hull, as from the
+    [alphahull](https://cran.r-project.org/package=alphahull) package. Your
+    new stat should take an `alpha` argument.
+1.  Modify the final version of `StatDensityCommon` to allow the user to 
+    specify the `min` and `max` parameters. You'll need to modify both the
+    layer function and the `compute_group()` method.
+1.  Compare and contrast `StatLm` to `ggplot2::StatSmooth`. What key
+    differences make `StatSmooth` more complex than `StatLm`?    
+    -->
+<ol style="list-style-type: decimal">
+<li><code>stat_chull</code>を拡張して、<a href="https://cran.r-project.org/package=alphahull">alphahull</a>がやっているようにアルファシェイプを計算するようにしなさい。 新しいstatは<code>alpha</code>を引数に取ること。</li>
+<li><code>StatDensityCommon</code>の最終バージョンに変更を加え、ユーザーが<code>min</code>と<code>max</code>パラメーターを指定できるようにしなさい。layer関数と <code>compute_group()</code>メソッドの両方を変更する必要がある。</li>
+<li><code>StatLm</code>と<code>ggplot2::StatSmooth</code>を比較しなさい。<code>StatSmooth</code>を<code>StatLm</code>より複雑にしている重要な違いは何？</li>
+</ol>
+<!-- ## Creating a new geom -->
+</div>
+</div>
+<div id="geom" class="section level2">
+<h2>新しいgeomをつくる</h2>
+<!-- It's harder to create a new geom than a new stat because you also need to know some grid. -->
+<p>新しいgeomをつくるのは、gridについて知る必要があるため、新しいstatをつくるより難しいです。 <!-- ggplot2 is built on top of grid, so you'll need to know the basics of drawing with grid. --> ggplot2はgridの上に成り立っているので、gridでプロットを描く基本について知る必要があります。 <!-- If you're serious about adding a new geom, I'd recommend buying [R graphics](http://amzn.com/B00I60M26G) by Paul Murrell. It tells you everything you need to know about drawing with grid. --> もしも新しいgeomをつくることを真剣に検討しているのであればPaul Murrellの<a href="http://amzn.com/B00I60M26G">R graphics</a>（邦訳：<a href="http://www.kyoritsu-pub.co.jp/bookdetail/9784320019058">Rグラフィックス</a>）を購入することをお薦めします。この本はgridでプロットを描くために知る必要があることをすべて教えてくれます。</p>
+<!-- ### A simple geom -->
+<div id="geom" class="section level3">
+<h3>簡単なgeom</h3>
+<!-- It's easiest to start with a simple example. The code below is a simplified version of `geom_point()`: -->
+<p>簡単な例から始めるのが簡単でしょう。以下のコードは<code>geom_point()</code>の簡単なバージョンです：</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">GeomSimplePoint &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;GeomSimplePoint&quot;</span>, Geom,
+  <span class="dt">required_aes =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>),
+  <span class="dt">default_aes =</span> <span class="kw">aes</span>(<span class="dt">shape =</span> <span class="dv">19</span>, <span class="dt">colour =</span> <span class="st">&quot;black&quot;</span>),
+  <span class="dt">draw_key =</span> draw_key_point,
+
+  <span class="dt">draw_panel =</span> function(data, panel_scales, coord) {
+    coords &lt;-<span class="st"> </span>coord$<span class="kw">transform</span>(data, panel_scales)
+    grid::<span class="kw">pointsGrob</span>(
+      coords$x, coords$y,
+      <span class="dt">pch =</span> coords$shape,
+      <span class="dt">gp =</span> grid::<span class="kw">gpar</span>(<span class="dt">col =</span> coords$colour)
+    )
+  }
+)
+
+geom_simple_point &lt;-<span class="st"> </span>function(<span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">stat =</span> <span class="st">&quot;identity&quot;</span>,
+                              <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>, <span class="dt">show.legend =</span> <span class="ot">NA</span>, 
+                              <span class="dt">inherit.aes =</span> <span class="ot">TRUE</span>, ...) {
+  <span class="kw">layer</span>(
+    <span class="dt">geom =</span> GeomSimplePoint, <span class="dt">mapping =</span> mapping,  <span class="dt">data =</span> data, <span class="dt">stat =</span> stat, 
+    <span class="dt">position =</span> position, <span class="dt">show.legend =</span> show.legend, <span class="dt">inherit.aes =</span> inherit.aes,
+    <span class="dt">params =</span> <span class="kw">list</span>(<span class="dt">na.rm =</span> na.rm, ...)
+  )
+}
+
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, hwy)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_simple_point</span>()</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- This is very similar to defining a new stat. You always need to provide fields/methods for the four pieces shown above: -->
+<p>これはあたらしいstatを定義する時ととてもよく似ています。上に示した4つに対してフィールドまたはメソッドを指定する必要があります。</p>
+<!-- * `required_aes` is a character vector which lists all the aesthetics that
+  the user must provide. -->
+<ul>
+<li><code>required_aes</code>はユーザが指定しなければならないすべてのaestheticsを並べたcharacterのベクトルです。 <!--  * `default_aes` lists the aesthetics that have default values. --></li>
+<li><code>default_aes</code>は、デフォルト値を持つaestheticsのリストです。</li>
+</ul>
+<!-- * `draw_key` provides the function used to draw the key in the legend. 
+  You can see a list of all the build in key functions in `?draw_key` -->
+<ul>
+<li><code>draw_key</code>は凡例のキーを描画するのに使われる関数を提供します。<code>?draw_key</code>を見れば組み込みのkey関数のリストを見ることができます。</li>
+</ul>
+<!-- * `draw_group()` is where the magic happens. This function takes three
+  arguments and returns a grid grob. It is called once for each panel.
+  It's the most complicated part and is described in more detail below. -->
+<ul>
+<li><code>draw_group()</code>は魔法が起こる場所です。この関数は3つの引数を取って、1つのgrid grobを返します。これはそれぞれのパネルに対して1回づつ呼ばれます。 これは以下により詳しく説明しますが、もっとも複雑な部分です。</li>
+</ul>
+<!-- `draw_group()` has three arguments: -->
+<p><code>draw_group()</code>は3つの引数を持っています：</p>
+<!-- * `data`: a data frame with one column for each aesthetic. -->
+<ul>
+<li><code>data</code>: それぞれのaestheticsに対してひとつのカラムを持つデータフレーム</li>
+</ul>
+<!-- * `panel_scales`: a list containing information about the x and y scales
+  for the current panel. -->
+<ul>
+<li><code>panel_scales</code>: 現在のパネルのxとyのスケールに関する情報を含んだリスト</li>
+</ul>
+<!-- * `coord`: an object describing the coordinate system. -->
+<ul>
+<li><code>coord</code>: 座標系について記述しているオブジェクト</li>
+</ul>
+<!-- Generally you won't use `panel_scales` and `coord` directly, but you will always use them to transform the data: `coords <- coord$transform(data, panel_scales)`. -->
+<p>一般的に、<code>panel_scales</code>と<code>coord</code>が直接使われることはないでしょう。しかし、データを変形させるために常にこれらを使うことになります：<code>coords &lt;- coord$transform(data, panel_scales)</code> <!-- This creates a data frame where position variables are scaled to the range 0--1. You then take this data and call a grid grob function. (Transforming for non-Cartesian coordinate systems is quite complex - you're best of transforming your data to the form accepted by an existing ggplot2 geom and passing it.) --> これは、position変数が0～1の範囲にスケールされたデータフレームを作成します。それから、このデータが返ってきて、grid grob関数が呼び出されます。（非直行座標系での変形はとても複雑です。既存のggplot2のgeomが受け付ける形にデータを変形して、そのgeomに渡すのがいいでしょう）</p>
+<!-- ### Collective geoms -->
+</div>
+<div id="geom" class="section level3">
+<h3>集合的なgeom</h3>
+<!-- Overriding `draw_panel()` is most appropriate if there is one graphic element per row. In other cases, you want graphic element per group. For example, take polygons: each row gives one vertex of a polygon. In this case, you should instead override `draw_group()`: -->
+<p><code>draw_panel()</code>をオーバーライドするのは、1つの行で1つの要素だけが描画されるなら、もっとも適切なやり方です。他の場合だと、グループごとに要素を描きたくなります。たとえば、多角形を例にとると、各行は多角形の1つの頂点を与えます。この場合には、<code>draw_group()</code>をオーバーライドするべきです。</p>
+<!-- The following code makes a simplified version of `GeomPolygon`: -->
+<p>以下は<code>GeomPolygon</code>の簡単なバージョンです。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">GeomSimplePolygon &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;GeomPolygon&quot;</span>, Geom,
+  <span class="dt">required_aes =</span> <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>),
+  
+  <span class="dt">default_aes =</span> <span class="kw">aes</span>(
+    <span class="dt">colour =</span> <span class="ot">NA</span>, <span class="dt">fill =</span> <span class="st">&quot;grey20&quot;</span>, <span class="dt">size =</span> <span class="fl">0.5</span>,
+    <span class="dt">linetype =</span> <span class="dv">1</span>, <span class="dt">alpha =</span> <span class="dv">1</span>
+  ),
+
+  <span class="dt">draw_key =</span> draw_key_polygon,
+
+  <span class="dt">draw_group =</span> function(data, panel_scales, coord) {
+    n &lt;-<span class="st"> </span><span class="kw">nrow</span>(data)
+    if (n &lt;=<span class="st"> </span><span class="dv">2</span>) <span class="kw">return</span>(grid::<span class="kw">nullGrob</span>())
+
+    coords &lt;-<span class="st"> </span>coord$<span class="kw">transform</span>(data, panel_scales)
+    <span class="co"># A polygon can only have a single colour, fill, etc, so take from first row</span>
+    first_row &lt;-<span class="st"> </span>coords[<span class="dv">1</span>, , drop =<span class="st"> </span><span class="ot">FALSE</span>]
+
+    grid::<span class="kw">polygonGrob</span>(
+      coords$x, coords$y, 
+      <span class="dt">default.units =</span> <span class="st">&quot;native&quot;</span>,
+      <span class="dt">gp =</span> grid::<span class="kw">gpar</span>(
+        <span class="dt">col =</span> first_row$colour,
+        <span class="dt">fill =</span> scales::<span class="kw">alpha</span>(first_row$fill, first_row$alpha),
+        <span class="dt">lwd =</span> first_row$size *<span class="st"> </span>.pt,
+        <span class="dt">lty =</span> first_row$linetype
+      )
+    )
+  }
+)
+geom_simple_polygon &lt;-<span class="st"> </span>function(<span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">stat =</span> <span class="st">&quot;chull&quot;</span>,
+                                <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>, <span class="dt">show.legend =</span> <span class="ot">NA</span>, 
+                                <span class="dt">inherit.aes =</span> <span class="ot">TRUE</span>, ...) {
+  <span class="kw">layer</span>(
+    <span class="dt">geom =</span> GeomSimplePolygon, <span class="dt">mapping =</span> mapping, <span class="dt">data =</span> data, <span class="dt">stat =</span> stat, 
+    <span class="dt">position =</span> position, <span class="dt">show.legend =</span> show.legend, <span class="dt">inherit.aes =</span> inherit.aes,
+    <span class="dt">params =</span> <span class="kw">list</span>(<span class="dt">na.rm =</span> na.rm, ...)
+  )
+}
+
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, hwy)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_point</span>() +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_simple_polygon</span>(<span class="kw">aes</span>(<span class="dt">colour =</span> class), <span class="dt">fill =</span> <span class="ot">NA</span>)</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- There are a few things to note here: -->
+<p>いくつか特筆すべき点があります：</p>
+<!-- * We override `draw_group()` instead of `draw_layer()` because we want
+  one polygon per group, not one polygon per row. If you look at the source
+  code for the original `GeomPolygon` you'll see it actually overrides
+  `geom_layer()` because it uses some tricks to make `polygonGrob()` produce
+  multiple polygons in one call. This is considerably more complicated, but 
+  gives better performance. -->
+<ul>
+<li>1つの行につき1つの多角形を描くのではなく1つのグループにつき1つの多角形を描きたいので、<code>draw_layer()</code>の代わりに<code>draw_group()</code>をオーバーライドしています。 オリジナルの<code>GeomPolygon</code>のソースコードを見たなら、実際には<code>geom_layer()</code>をオーバーライドしていることに気づくでしょう。これは<code>polygonGrob</code>をつくるためのいくつかの トリックが1回の呼び出しで複数の多角形を生成するからです。これはかなり複雑ですが、パフォーマンスに優れています。</li>
+</ul>
+<!-- * If the data contains two or fewer points, there's no point trying to draw
+  a polygon, so we return a `nullGrob()`. This is the graphical equivalent
+  of `NULL`: it's a grob that doesn't draw anything and doesn't take up
+  any space. -->
+<ul>
+<li>もしデータが2つ以下の点しか含まない場合、多角形を描こうとする意味はないので、<code>nullGrob()</code>を返します。 これは<code>NULL</code>に相当するものです：これは何も描画せず場所も取らないgrobです。</li>
+</ul>
+<!-- * Note the units: `x` and `y` should always be drawn in "native" units. 
+  (The default units for `pointGrob()` is a native, so we didn't need to 
+  change it there). `lwd` is measured in points, but ggplot2 uses mm, 
+  so we need to multiply it by the adjustment factor `.pt`. -->
+<ul>
+<li>単位について注意すべきは、<code>x</code>と<code>y</code>が「ネイティブな」単位で描かれるという点です（<code>pointGrob</code>のデフォルトの 単位はネイティブなので、何も変更する必要はありません）。<code>lwd</code>はポイント単位ですが、ggplot2はmm単位を使うので、 修正するための要素<code>.pt</code>を掛ける必要があります。</li>
+</ul>
+<!-- ### Inheriting from an existing Geom -->
+</div>
+<div id="geom" class="section level3">
+<h3>既存のgeomからの継承</h3>
+<!-- Sometimes you just want to make a small modification to an existing geom. In this case, rather than inheriting from `Geom` you can inherit from an existing subclass. For example, we might want to change the defaults for `GeomPolygon` to work better with `StatChull`: -->
+<p>ときどき、既存のgeomに小さな変更を加えたくなります。この場合、<code>Geom</code>を継承するよりも、既に存在するサブクラスを継承することができます。たとえば、<code>StatChull</code>と組み合わせてうまく動くように<code>GeomPolygon</code>のデフォルトを変更したくなります：</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">GeomPolygonHollow &lt;-<span class="st"> </span><span class="kw">ggproto</span>(<span class="st">&quot;GeomPolygonHollow&quot;</span>, GeomPolygon,
+  <span class="dt">default_aes =</span> <span class="kw">aes</span>(<span class="dt">colour =</span> <span class="st">&quot;black&quot;</span>, <span class="dt">fill =</span> <span class="ot">NA</span>, <span class="dt">size =</span> <span class="fl">0.5</span>, <span class="dt">linetype =</span> <span class="dv">1</span>,
+    <span class="dt">alpha =</span> <span class="ot">NA</span>)
+  )
+geom_chull &lt;-<span class="st"> </span>function(<span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, 
+                       <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">na.rm =</span> <span class="ot">FALSE</span>, <span class="dt">show.legend =</span> <span class="ot">NA</span>, 
+                       <span class="dt">inherit.aes =</span> <span class="ot">TRUE</span>, ...) {
+  <span class="kw">layer</span>(
+    <span class="dt">stat =</span> StatChull, <span class="dt">geom =</span> GeomPolygonHollow, <span class="dt">data =</span> data, <span class="dt">mapping =</span> mapping,
+    <span class="dt">position =</span> position, <span class="dt">show.legend =</span> show.legend, <span class="dt">inherit.aes =</span> inherit.aes,
+    <span class="dt">params =</span> <span class="kw">list</span>(<span class="dt">na.rm =</span> na.rm, ...)
+  )
+}
+
+<span class="kw">ggplot</span>(mpg, <span class="kw">aes</span>(displ, hwy)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_point</span>() +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_chull</span>()</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- This doesn't allow you to use different geoms with the stat, but that seems appropriate here since the convex hull is primarily a polygonal feature. -->
+<p>このやり方では別のgeomをこのstatと組み合わせることはできませんが、凸包がおおむね多角形の機能となったので、ここでは適切だと思われます。</p>
+</div>
+<div id="exercises-1" class="section level3">
+<h3>Exercises</h3>
+<!--
+1. Compare and contrast `GeomPoint` with `GeomSimplePoint`. 
+
+1. Compare and contract `GeomPolygon` with `GeomSimplePolygon`.
+-->
+<ol style="list-style-type: decimal">
+<li><code>GeomPoint</code>と<code>GeomSimplePoint</code>を比較しなさい。</li>
+<li><code>GeomPolygon</code>と<code>GeomSimplePolygon</code>を比較しなさい。</li>
+</ol>
+<!-- ## Creating your own theme -->
+</div>
+</div>
+<div id="theme" class="section level2">
+<h2>自分のthemeをつくる</h2>
+<!-- If you're going to create your own complete theme, there are a few things you need to know: -->
+<p>もし自分の完全なthemeをつくろうとするなら、いくつか知る必要があることがあります：</p>
+<!-- * Overriding existing elements, rather than modifying them -->
+<ul>
+<li>既存のelementに変更を加えるのではなく、オーバーライドする <!-- * The four global elements that affect (almost) every other theme element --></li>
+<li>themeの（ほぼ）すべてのelementに影響を与える4つのグローバルなelement <!-- * Complete vs. incomplete elements --></li>
+<li>完全なelement vs 不完全なelement</li>
+</ul>
+<!-- ### Overriding elements -->
+<div id="element" class="section level3">
+<h3>elementのオーバーライド</h3>
+<!-- By default, when you add a new theme element, it inherits values from the existing theme. For example, the following code sets the key colour to red, but it inherits the existing fill colour: -->
+<p>デフォルトでは、新しいtheme elementを追加すると、既存のテーマから値を継承します。例えば、以下のコードはkeyのcolourを赤に設定していますが、既存のfillを継承しています。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">theme_grey</span>()$legend.key
+<span class="co">#&gt; List of 4</span>
+<span class="co">#&gt;  $ fill    : chr &quot;grey95&quot;</span>
+<span class="co">#&gt;  $ colour  : chr &quot;white&quot;</span>
+<span class="co">#&gt;  $ size    : NULL</span>
+<span class="co">#&gt;  $ linetype: NULL</span>
+<span class="co">#&gt;  - attr(*, &quot;class&quot;)= chr [1:2] &quot;element_rect&quot; &quot;element&quot;</span>
+
+new_theme &lt;-<span class="st"> </span><span class="kw">theme_grey</span>() +<span class="st"> </span><span class="kw">theme</span>(<span class="dt">legend.key =</span> <span class="kw">element_rect</span>(<span class="dt">colour =</span> <span class="st">&quot;red&quot;</span>))
+new_theme$legend.key
+<span class="co">#&gt; List of 4</span>
+<span class="co">#&gt;  $ fill    : chr &quot;grey95&quot;</span>
+<span class="co">#&gt;  $ colour  : chr &quot;red&quot;</span>
+<span class="co">#&gt;  $ size    : NULL</span>
+<span class="co">#&gt;  $ linetype: NULL</span>
+<span class="co">#&gt;  - attr(*, &quot;class&quot;)= chr [1:2] &quot;element_rect&quot; &quot;element&quot;</span></code></pre></div>
+<!-- To override it completely, use `%+replace%` instead of `+`: -->
+<p>完全にオーバーライドするには<code>+</code>ではなく<code>%+replace%</code>を使います。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">new_theme &lt;-<span class="st"> </span><span class="kw">theme_grey</span>() %+replace%<span class="st"> </span><span class="kw">theme</span>(<span class="dt">legend.key =</span> <span class="kw">element_rect</span>(<span class="dt">colour =</span> <span class="st">&quot;red&quot;</span>))
+new_theme$legend.key
+<span class="co">#&gt; List of 4</span>
+<span class="co">#&gt;  $ fill    : NULL</span>
+<span class="co">#&gt;  $ colour  : chr &quot;red&quot;</span>
+<span class="co">#&gt;  $ size    : NULL</span>
+<span class="co">#&gt;  $ linetype: NULL</span>
+<span class="co">#&gt;  - attr(*, &quot;class&quot;)= chr [1:2] &quot;element_rect&quot; &quot;element&quot;</span></code></pre></div>
+<!-- ### Global elements -->
+</div>
+<div id="element" class="section level3">
+<h3>グローバルなelement</h3>
+<!-- There are four elements that affect the global appearance of the plot: -->
+<p>プロット全体の見え方に影響するelementが4つあります：</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Element</th>
+<th align="left">Theme function</th>
+<th align="left">概要</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">line</td>
+<td align="left"><code>element_line()</code></td>
+<td align="left">すべての線</td>
+</tr>
+<tr class="even">
+<td align="left">rect</td>
+<td align="left"><code>element_rect()</code></td>
+<td align="left">すべての長方形</td>
+</tr>
+<tr class="odd">
+<td align="left">text</td>
+<td align="left"><code>element_text()</code></td>
+<td align="left">すべてのテキスト</td>
+</tr>
+<tr class="even">
+<td align="left">title</td>
+<td align="left"><code>element_text()</code></td>
+<td align="left">タイトル要素（プロット、軸、凡例）のすべてのテキスト</td>
+</tr>
+</tbody>
+</table>
+<!-- These set default properties that are inherited by more specific settings. These are most useful for setting an overall "background" colour and overall font settings (e.g. family and size). -->
+<p>これらは、より詳細な設定から継承されるデフォルトの属性をセットします。全体のbackgroundの色や全体のフォント設定（familyやsize）を設定するのに便利です。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">df &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">x =</span> <span class="dv">1</span>:<span class="dv">3</span>, <span class="dt">y =</span> <span class="dv">1</span>:<span class="dv">3</span>)
+base &lt;-<span class="st"> </span><span class="kw">ggplot</span>(df, <span class="kw">aes</span>(x, y)) +<span class="st"> </span>
+<span class="st">  </span><span class="kw">geom_point</span>() +<span class="st"> </span>
+<span class="st">  </span><span class="kw">theme_minimal</span>()
+
+base</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">base +<span class="st"> </span><span class="kw">theme</span>(<span class="dt">text =</span> <span class="kw">element_text</span>(<span class="dt">colour =</span> <span class="st">&quot;red&quot;</span>))</code></pre></div>
+<p><img src="data:image/png;base64,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" alt /></p>
+<!-- You should generally start creating a theme by modifying these values. -->
+<p>一般的には、これらの値を変更するところからthemeづくりを始めるべきでしょう。</p>
+<!-- ### Complete vs incomplete -->
+</div>
+<div id="element-vs-element" class="section level3">
+<h3>完全なelement vs 不完全なelement</h3>
+<!-- It is useful to understand the difference between complete and incomplete theme objects. A *complete* theme object is one produced by calling a theme function with the attribute `complete = TRUE`. -->
+<p>完全なthemeオブジェクトと不完全なthemeオブジェクトの違いについて理解するのは有用です。完全なthemeオブジェクトは、<code>complete = TRUE</code>を付けてtheme関数を呼び出すことで生成されます。</p>
+<!-- Theme functions `theme_grey()` and `theme_bw()` are examples of complete theme functions. -->
+<p><code>theme_grey()</code>と<code>theme_bw()</code>は完全なtheme関数の例です。 <!-- Calls to `theme()` produce *incomplete* theme objects, since they represent (local) modifications to a theme object rather than returning a complete theme object per se. --> <code>theme()</code>は不完全なthemeオブジェクトを生成します。なぜなら、それらは、themeオブジェクトの部分的な変更を表すのであって、完全なthemeオブジェクトそれ自体を返すものではないからです。 <!-- When adding an incomplete theme to a complete one, the result is a complete theme. --> 不完全なthemeと完全なthemeを足し合わせると、完全なthemeｖができます。</p>
+<!-- Complete and incomplete themes behave somewhat differently when added to a ggplot object: -->
+<p>完全なthemeと不完全なthemeはggplotオブジェクトに足しあわされた時はやや異なる挙動をします。</p>
+<!-- * Adding an incomplete theme augments the current theme object, replacing only 
+  those properties of elements defined in the call to `theme()`. -->
+<ul>
+<li>不完全なthemeを足し合わせると、今のthemeオブジェクトを拡張し、<code>theme()</code>の呼び出しに定義されたelementの属性のみを置き換えます。</li>
+</ul>
+<!-- * Adding a complete theme wipes away the existing theme and applies the new theme. -->
+<ul>
+<li>完全なthemeを足し合わせると、既存のthemeを取り除き、新しいthemeを適用します。</li>
+</ul>
+</div>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

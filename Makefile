@@ -1,14 +1,11 @@
-MD_FILES := $(patsubst %.orig.Rmd, %.md, $(wildcard *.Rmd))
+HTML_FILES := $(patsubst %.Rmd, %.html, $(wildcard *.Rmd))
 
-all: $(MD_FILES)
+all: $(HTML_FILES)
 
-%.Rmd: %.orig.Rmd
-	sed "/^<!--/d" $< > $@
-
-%.md: %.Rmd
+%.html: %.Rmd
 	R --slave -e "set.seed(100);rmarkdown::render('$<', encoding = 'UTF-8')"
 
 .PHONY: clean
 
 clean:
-	$(RM) -r _cache $(MD_FILES)
+	$(RM) -r _cache $(HTML_FILES)
