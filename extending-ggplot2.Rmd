@@ -2,19 +2,16 @@
 title: "ggplot2を拡張する（原題：Extending ggplot2）"
 author: "Hadley Wickham（訳：@yutannihilation）"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Extending ggplot2}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output:
+  rmarkdown::md_document:
+    variant: markdown_github
 ---
-
 
 Note that the original document is provided under the license of GPL-2 and the copyright belongs to Hadley Wickham, one of the authors of [ggplot2](https://github.com/hadley/ggplot2).
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+knitr::opts_chunk$set(comment = "#>")
 library(ggplot2)
 ```
 
@@ -39,9 +36,7 @@ library(ggplot2)
 
 <!-- This OO system is used only in one place: ggplot2. -->
 このオブジェクト指向システムはたったひとつの場所でしか使われていません。それは、ggplot2です。
-<!-- This is mostly historical accident: ggplot2 started off using [proto]( https://cran.r-project.org/package=proto) 
-because I needed mutable objects. This was well before the creation of (the briefly lived) [mutatr](http://vita.had.co.nz/papers/mutatr.html),
-reference classes and R6: proto was the only game in town. -->
+<!-- This is mostly historical accident: ggplot2 started off using [proto]( https://cran.r-project.org/package=proto) because I needed mutable objects. This was well before the creation of (the briefly lived) [mutatr](http://vita.had.co.nz/papers/mutatr.html), reference classes and R6: proto was the only game in town. -->
 これはほとんどが歴史的経緯です。ggplot2はmutableなオブジェクトのために[proto]( https://cran.r-project.org/package=proto)を使って始まりました。これは（短命だった）[mutatr](http://vita.had.co.nz/papers/mutatr.html)や参照クラスやR6よりずっと昔の話です。protoだけが唯一の選択肢だったのです。
 
 <!-- But why ggproto? -->
@@ -127,7 +122,7 @@ stat_chull <- function(mapping = NULL, data = NULL, geom = "polygon",
 （注：もし自分のパッケージの中でこれを書くなら、`ggplot2::layer()`と明示的に呼ぶか、`layer()`関数をパッケージの名前空間にインポートするか、いずれかを行う必要があります）
 
 <!-- Once we have a layer function we can try our new stat: -->
-いちどlayer関数ができれば、新しいstatを試してみましょう。
+いったんlayer関数を手にすれば、新しいstatを試すことができるようになります。
 
 ```{r}
 ggplot(mpg, aes(displ, hwy)) + 
@@ -139,7 +134,7 @@ ggplot(mpg, aes(displ, hwy)) +
 （`fill=NA`と毎回指定しなくてもいいようにgeomのデフォルトを変更する方法は後ほど出てきます）
 
 <!-- Once we've written this basic object, ggplot2 gives a lot for free. For example, ggplot2 automatically preserves aesthetics that are constant within each group: -->
-一度この基本的なオブジェクトを書き上げると、ggplot2が提供するたくさんの機能を自由に使えるようになります。例えば、ggplot2はそれぞれのグループで固定のaestheticsを自動で保存してくれます。
+ひとたびこの基本的なオブジェクトを書き上げると、ggplot2が提供するたくさんの機能を自由に使えるようになります。例えば、ggplot2はそれぞれのグループで固定のaestheticsを自動で保存してくれます。
 
 ```{r}
 ggplot(mpg, aes(displ, hwy, colour = drv)) + 
@@ -372,16 +367,10 @@ ggplot(mpg, aes(displ, drv, fill = ..density..)) +
 
 ### Exercises
 
-<!--
-1.  Extend `stat_chull` to compute the alpha hull, as from the
-    [alphahull](https://cran.r-project.org/package=alphahull) package. Your
-    new stat should take an `alpha` argument.
-1.  Modify the final version of `StatDensityCommon` to allow the user to 
-    specify the `min` and `max` parameters. You'll need to modify both the
-    layer function and the `compute_group()` method.
-1.  Compare and contrast `StatLm` to `ggplot2::StatSmooth`. What key
-    differences make `StatSmooth` more complex than `StatLm`?    
-    -->
+
+<!-- 1.  Extend `stat_chull` to compute the alpha hull, as from the [alphahull](https://cran.r-project.org/package=alphahull) package. Your new stat should take an `alpha` argument. -->
+<!-- 1.  Modify the final version of `StatDensityCommon` to allow the user to specify the `min` and `max` parameters. You'll need to modify both the layer function and the `compute_group()` method. -->
+<!-- 1.  Compare and contrast `StatLm` to `ggplot2::StatSmooth`. What key differences make `StatSmooth` more complex than `StatLm`? -->
 1. `stat_chull`を拡張して、[alphahull](https://cran.r-project.org/package=alphahull)がやっているようにアルファシェイプを計算するようにしなさい。
    新しいstatは`alpha`を引数に取ること。
 1. `StatDensityCommon`の最終バージョンに変更を加え、ユーザーが`min`と`max`パラメーターを指定できるようにしなさい。layer関数と
@@ -438,19 +427,15 @@ ggplot(mpg, aes(displ, hwy)) +
 <!-- This is very similar to defining a new stat. You always need to provide fields/methods for the four pieces shown above: -->
 これはあたらしいstatを定義する時ととてもよく似ています。上に示した4つに対してフィールドまたはメソッドを指定する必要があります。
 
-<!-- * `required_aes` is a character vector which lists all the aesthetics that
-  the user must provide. -->
+<!-- * `required_aes` is a character vector which lists all the aesthetics that the user must provide. -->
 * `required_aes`はユーザが指定しなければならないすべてのaestheticsを並べたcharacterのベクトルです。
 <!--  * `default_aes` lists the aesthetics that have default values. -->
 * `default_aes`は、デフォルト値を持つaestheticsのリストです。
 
-<!-- * `draw_key` provides the function used to draw the key in the legend. 
-  You can see a list of all the build in key functions in `?draw_key` -->
+<!-- * `draw_key` provides the function used to draw the key in the legend. You can see a list of all the build in key functions in `?draw_key` -->
 * `draw_key`は凡例のキーを描画するのに使われる関数を提供します。`?draw_key`を見れば組み込みのkey関数のリストを見ることができます。
   
-<!-- * `draw_group()` is where the magic happens. This function takes three
-  arguments and returns a grid grob. It is called once for each panel.
-  It's the most complicated part and is described in more detail below. -->
+<!-- * `draw_group()` is where the magic happens. This function takes three arguments and returns a grid grob. It is called once for each panel. It's the most complicated part and is described in more detail below. -->
 * `draw_group()`は魔法が起こる場所です。この関数は3つの引数を取って、1つのgrid grobを返します。これはそれぞれのパネルに対して1回づつ呼ばれます。
   これは以下により詳しく説明しますが、もっとも複雑な部分です。
   
@@ -460,8 +445,7 @@ ggplot(mpg, aes(displ, hwy)) +
 <!-- * `data`: a data frame with one column for each aesthetic. -->
 * `data`: それぞれのaestheticsに対してひとつのカラムを持つデータフレーム
 
-<!-- * `panel_scales`: a list containing information about the x and y scales
-  for the current panel. -->
+<!-- * `panel_scales`: a list containing information about the x and y scales for the current panel. -->
 * `panel_scales`: 現在のパネルのxとyのスケールに関する情報を含んだリスト
 
 <!-- * `coord`: an object describing the coordinate system. -->
@@ -530,29 +514,18 @@ ggplot(mpg, aes(displ, hwy)) +
 <!-- There are a few things to note here: -->
 いくつか特筆すべき点があります：
 
-<!-- * We override `draw_group()` instead of `draw_layer()` because we want
-  one polygon per group, not one polygon per row. If you look at the source
-  code for the original `GeomPolygon` you'll see it actually overrides
-  `geom_layer()` because it uses some tricks to make `polygonGrob()` produce
-  multiple polygons in one call. This is considerably more complicated, but 
-  gives better performance. -->
+<!-- * We override `draw_group()` instead of `draw_layer()` because we want one polygon per group, not one polygon per row. If you look at the source code for the original `GeomPolygon` you'll see it actually overrides `geom_layer()` because it uses some tricks to make `polygonGrob()` produce multiple polygons in one call. This is considerably more complicated, but gives better performance. -->
 
 * 1つの行につき1つの多角形を描くのではなく1つのグループにつき1つの多角形を描きたいので、`draw_layer()`の代わりに`draw_group()`をオーバーライドしています。
   オリジナルの`GeomPolygon`のソースコードを見たなら、実際には`geom_layer()`をオーバーライドしていることに気づくでしょう。これは`polygonGrob`をつくるためのいくつかの
   トリックが1回の呼び出しで複数の多角形を生成するからです。これはかなり複雑ですが、パフォーマンスに優れています。
  
-<!-- * If the data contains two or fewer points, there's no point trying to draw
-  a polygon, so we return a `nullGrob()`. This is the graphical equivalent
-  of `NULL`: it's a grob that doesn't draw anything and doesn't take up
-  any space. -->
+<!-- * If the data contains two or fewer points, there's no point trying to draw a polygon, so we return a `nullGrob()`. This is the graphical equivalent of `NULL`: it's a grob that doesn't draw anything and doesn't take up any space. -->
 
 * もしデータが2つ以下の点しか含まない場合、多角形を描こうとする意味はないので、`nullGrob()`を返します。
   これは`NULL`に相当するものです：これは何も描画せず場所も取らないgrobです。
   
-<!-- * Note the units: `x` and `y` should always be drawn in "native" units. 
-  (The default units for `pointGrob()` is a native, so we didn't need to 
-  change it there). `lwd` is measured in points, but ggplot2 uses mm, 
-  so we need to multiply it by the adjustment factor `.pt`. -->
+<!-- * Note the units: `x` and `y` should always be drawn in "native" units. (The default units for `pointGrob()` is a native, so we didn't need to change it there). `lwd` is measured in points, but ggplot2 uses mm, so we need to multiply it by the adjustment factor `.pt`. -->
 * 単位について注意すべきは、`x`と`y`が「ネイティブな」単位で描かれるという点です（`pointGrob`のデフォルトの
   単位はネイティブなので、何も変更する必要はありません）。`lwd`はポイント単位ですが、ggplot2はmm単位を使うので、
   修正するための要素`.pt`を掛ける必要があります。
@@ -588,11 +561,8 @@ ggplot(mpg, aes(displ, hwy)) +
 
 ### Exercises
 
-<!--
-1. Compare and contrast `GeomPoint` with `GeomSimplePoint`. 
-
-1. Compare and contract `GeomPolygon` with `GeomSimplePolygon`.
--->
+<!-- 1. Compare and contrast `GeomPoint` with `GeomSimplePoint`.  -->
+<!-- 1. Compare and contract `GeomPolygon` with `GeomSimplePolygon`. -->
 1. `GeomPoint`と`GeomSimplePoint`を比較しなさい。
 1. `GeomPolygon`と`GeomSimplePolygon`を比較しなさい。
 
@@ -676,8 +646,7 @@ base + theme(text = element_text(colour = "red"))
 <!-- Complete and incomplete themes behave somewhat differently when added to a ggplot object: -->
 完全なthemeと不完全なthemeはggplotオブジェクトに足しあわされた時はやや異なる挙動をします。
 
-<!-- * Adding an incomplete theme augments the current theme object, replacing only 
-  those properties of elements defined in the call to `theme()`. -->
+<!-- * Adding an incomplete theme augments the current theme object, replacing only those properties of elements defined in the call to `theme()`. -->
 * 不完全なthemeを足し合わせると、今のthemeオブジェクトを拡張し、`theme()`の呼び出しに定義されたelementの属性のみを置き換えます。
   
 <!-- * Adding a complete theme wipes away the existing theme and applies the new theme. -->
