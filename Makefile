@@ -1,11 +1,11 @@
-MD_FILES := $(patsubst %.Rmd, %.nocomments.md, $(wildcard *.Rmd))
+MD_FILES := $(patsubst %.orig.Rmd, %.md, $(wildcard *.Rmd))
 
 all: $(MD_FILES)
 
-%.nocomments.Rmd: %.Rmd
+%.Rmd: %.orig.Rmd
 	sed "/^<!--/d" $< > $@
 
-%.nocomments.md: %.nocomments.Rmd
+%.md: %.Rmd
 	R --slave -e "set.seed(100);rmarkdown::render('$<', encoding = 'UTF-8')"
 
 .PHONY: clean

@@ -94,7 +94,7 @@ ggplot(mpg, aes(displ, hwy)) +
   stat_chull(fill = NA, colour = "black")
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-3-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-3-1.png)
 
 （`fill=NA`と毎回指定しなくてもいいようにgeomのデフォルトを変更する方法は後ほど出てきます）
 
@@ -106,7 +106,7 @@ ggplot(mpg, aes(displ, hwy, colour = drv)) +
   stat_chull(fill = NA)
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-4-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-4-1.png)
 
 凸包を別の方法で表示するようにデフォルトのgeomをオーバーライドすることもできます。
 
@@ -116,7 +116,7 @@ ggplot(mpg, aes(displ, hwy)) +
   geom_point()
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-5-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-5-1.png)
 
 ### Statのパラメータ
 
@@ -152,7 +152,7 @@ ggplot(mpg, aes(displ, hwy)) +
   stat_lm()
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-6-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-6-1.png)
 
 `StatLm`はパラメータを持たないため柔軟性がありません。モデルの式やグリッドを生成するのに使われる点の数をユーザーが操作できるようにしたい、と思うかもしれません。そうするには、`compute_group()`メソッドと先ほどのラッパー関数に引数を追加します。
 
@@ -188,7 +188,7 @@ ggplot(mpg, aes(displ, hwy)) +
   stat_lm(formula = y ~ poly(x, 10), geom = "point", colour = "red", n = 20)
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-7-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-7-1.png)
 
 注意すべき点として、新しいパラメータを明示的にlayerの引数に含めることは、必ずやらなくてはいけないわけではありません。いずれにせよ`...`は正しい位置に渡されます。しかし、ユーザーがそれについて知ることができるようにどこかにドキュメントを書く必要はあるでしょう。 ここに短い例があります。`@inheritParams ggplot2::stat_identity`は、`stat_identity()`について定義されたすべてのパラメータについてのドキュメントを自動的に継承してくれます。
 
@@ -255,14 +255,14 @@ ggplot(mpg, aes(displ, colour = drv)) +
 
     #> Picking bandwidth of 0.345
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-9-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-9-1.png)
 
 ``` r
 ggplot(mpg, aes(displ, colour = drv)) + 
   stat_density_common(bandwidth = 0.5)
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-9-2.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-9-2.png)
 
 私は`NULL`をデフォルト値にすることをお薦めします。もしも重要なパラメータを自動で選ぶのであれば、`message()`でユーザーに伝えるのがいいでしょう。(あと、浮動小数点のパラメータを表示するときは`signif()`を使って数桁だけを見せるのがいいでしょう)
 
@@ -285,7 +285,7 @@ ggplot(mpg, aes(displ, drv, colour = ..density..)) +
   stat_density_common(bandwidth = 1, geom = "point")
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-10-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-10-1.png)
 
 しかし、このstatをareaのgeomと組み合わせると正しく動作しません。面が積み重なっていません。
 
@@ -294,7 +294,7 @@ ggplot(mpg, aes(displ, fill = drv)) +
   stat_density_common(bandwidth = 1, geom = "area", position = "stack")
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-11-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-11-1.png)
 
 これはなぜかというと、各グループの密度が別々に計算されていて`x`の推定値が含まれていないからです。この問題は、`setup_param()`で一度だけデータの範囲を計算するようにすることで解決できます。
 
@@ -325,14 +325,14 @@ ggplot(mpg, aes(displ, fill = drv)) +
   stat_density_common(bandwidth = 1, geom = "area", position = "stack")
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-12-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-12-1.png)
 
 ``` r
 ggplot(mpg, aes(displ, drv, fill = ..density..)) + 
   stat_density_common(bandwidth = 1, geom = "raster")
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-12-2.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-12-2.png)
 
 ### Exercises
 
@@ -379,7 +379,7 @@ ggplot(mpg, aes(displ, hwy)) +
   geom_simple_point()
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/GeomSimplePoint-1.png)
+![](extending-ggplot2_files/figure-markdown_github/GeomSimplePoint-1.png)
 
 これはあたらしいstatを定義する時ととてもよく似ています。上に示した4つに対してフィールドまたはメソッドを指定する必要があります。
 
@@ -452,7 +452,7 @@ ggplot(mpg, aes(displ, hwy)) +
   geom_simple_polygon(aes(colour = class), fill = NA)
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-13-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-13-1.png)
 
 いくつか特筆すべき点があります：
 
@@ -486,7 +486,7 @@ ggplot(mpg, aes(displ, hwy)) +
   geom_chull()
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/unnamed-chunk-14-1.png)
+![](extending-ggplot2_files/figure-markdown_github/unnamed-chunk-14-1.png)
 
 このやり方では別のgeomをこのstatと組み合わせることはできませんが、凸包がおおむね多角形の機能となったので、ここでは適切だと思われます。
 
@@ -567,13 +567,13 @@ base <- ggplot(df, aes(x, y)) +
 base
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/axis-line-ex-1.png)
+![](extending-ggplot2_files/figure-markdown_github/axis-line-ex-1.png)
 
 ``` r
 base + theme(text = element_text(colour = "red"))
 ```
 
-![](extending-ggplot2.nocomments_files/figure-markdown_github/axis-line-ex-2.png)
+![](extending-ggplot2_files/figure-markdown_github/axis-line-ex-2.png)
 
 一般的には、これらの値を変更するところからthemeづくりを始めるべきでしょう。
 
